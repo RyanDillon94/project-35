@@ -6,7 +6,7 @@ import { askCoach } from "@/lib/coach.functions";
 import type { HevyWorkout } from "@/lib/hevy.functions";
 import type { WeightEntry } from "@/components/p35/weight-card";
 import { DAILY_TARGETS, GOAL_WEIGHT } from "@/lib/project35";
-import { useLocalState } from "@/lib/use-local-state";
+import { useCoachMessages, type CoachMsg } from "@/lib/p35-cloud";
 import { Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 

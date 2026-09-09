@@ -1,0 +1,17 @@
+{
+  "name": "Project 35: The Undeniable Standard",
+  "short_name": "Project 35",
+  "description": "Dark-themed fitness command centre tracking the road to November 2029.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -17,6 +17,11 @@ export type HabitsState = Record<HabitKey, boolean>;
 export type PhotoSlot = "baseline" | "current";
 export type PhotosState = Record<PhotoSlot, string | null>;
 
+export type CoachMsg = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 // Safe LocalStorage helpers
 function getLocal<T>(key: string, fallback: T): T {
   try {
@@ -33,6 +38,38 @@ function setLocal<T>(key: string, value: T): void {
   } catch (err) {
     console.error(`Failed to save ${key} to localStorage:`, err);
   }
+}
+
+// Helper to pull all daily habit history across all dates
+function getAllLocalHabits(): Record<string, HabitsState> {
+  const habits: Record<string, HabitsState> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("p35_habits_")) {
+        const day = key.replace("p35_habits_", "");
+        habits[day] = getLocal<HabitsState>(key, { gym: false, steps: false, protein: false });
+      }
+    }
+  } catch (err) {
+    console.error("Failed to read habits from localStorage:", err);
+  }
+  return habits;
+}
+
+// Build a complete snapshot of all dashboard state
+export function buildFullBackup() {
+  return {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    weighIns: getLocal("p35_weigh_ins", []),
+    hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+    geminiApiKey: localStorage.getItem("p35_gemini_api_key") || "",
+    workout: getLocal("p35_cached_workout", null),
+    photos: getLocal("p35_photos", { baseline: null, current: null }),
+    coachMessages: getLocal("p35_coach_messages", []),
+    habits: getAllLocalHabits(),
+  };
 }
 
 // Compress images so phone localStorage does not exceed storage limits
@@ -209,21 +246,15 @@ export function usePhotos(userId: string | null) {
 
 // 5. BACKUP EXPORT & IMPORT UTILITIES
 export function exportDashboardBackup() {
-  const backup = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    weighIns: getLocal("p35_weigh_ins", []),
-    hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
-    workout: getLocal("p35_cached_workout", null),
-    photos: getLocal("p35_photos", { baseline: null, current: null }),
-  };
-
+  const backup = buildFullBackup();
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = `project35-backup-${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
@@ -235,8 +266,17 @@ export function importDashboardBackup(file: File): Promise<boolean> {
         const data = JSON.parse(e.target?.result as string);
         if (data.weighIns) setLocal("p35_weigh_ins", data.weighIns);
         if (data.hevyApiKey) localStorage.setItem("p35_hevy_api_key", data.hevyApiKey);
+        if (data.geminiApiKey) localStorage.setItem("p35_gemini_api_key", data.geminiApiKey);
         if (data.workout) setLocal("p35_cached_workout", data.workout);
         if (data.photos) setLocal("p35_photos", data.photos);
+        if (data.coachMessages) setLocal("p35_coach_messages", data.coachMessages);
+
+        // Restore all habit states
+        if (data.habits && typeof data.habits === "object") {
+          for (const [dayKey, state] of Object.entries(data.habits)) {
+            setLocal(`p35_habits_${dayKey}`, state);
+          }
+        }
         resolve(true);
       } catch {
         resolve(false);
@@ -247,11 +287,6 @@ export function importDashboardBackup(file: File): Promise<boolean> {
 }
 
 // 6. COACH MESSAGES HOOK
-export type CoachMsg = {
-  role: "user" | "assistant";
-  content: string;
-};
-
 export function useCoachMessages(userId: string | null) {
   const qc = useQueryClient();
   const queryKey = ["p35-coach-msgs", userId || "local"];
@@ -279,15 +314,7 @@ export function useCoachMessages(userId: string | null) {
 
 // 7. FRIDAY WEIGH-IN AUTO BACKUP
 export async function triggerFridayBackup(date: string): Promise<void> {
-  const backup = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    weighIns: getLocal("p35_weigh_ins", []),
-    hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
-    workout: getLocal("p35_cached_workout", null),
-    photos: getLocal("p35_photos", { baseline: null, current: null }),
-  };
-
+  const backup = buildFullBackup();
   const jsonStr = JSON.stringify(backup, null, 2);
   const fileName = `p35-backup-${date}.json`;
   const file = new File([jsonStr], fileName, { type: "application/json" });
@@ -297,7 +324,7 @@ export async function triggerFridayBackup(date: string): Promise<void> {
       await navigator.share({
         files: [file],
         title: `Project 35 Backup (${date})`,
-        text: `Friday weigh-in backup for ${date}`,
+        text: `Complete snapshot for ${date}`,
       });
       return;
     } catch (err) {

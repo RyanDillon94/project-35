@@ -60,12 +60,14 @@ function CoachText({ text }: { text: string }) {
 export function CoachDrawer({
   workout,
   entries,
+  userId,
 }: {
   workout: HevyWorkout | null;
   entries: WeightEntry[];
+  userId: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useLocalState<Msg[]>("p35.coach", []);
+  const { messages, add } = useCoachMessages(userId);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -78,17 +80,17 @@ export function CoachDrawer({
     const trimmed = text.trim();
     if (!trimmed || loading) return;
     const next: Msg[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(next);
     setInput("");
     setLoading(true);
     try {
+      await add.mutateAsync({ role: "user", content: trimmed });
       const { reply } = await askCoach({
         data: {
           messages: next.slice(-12),
           context: buildContext(workout, entries),
         },
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      await add.mutateAsync({ role: "assistant", content: reply });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Coach is unavailable.");
     } finally {

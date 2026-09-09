@@ -8,6 +8,8 @@ import { CoachDrawer } from "@/components/p35/coach-drawer";
 import { Roadmap } from "@/components/p35/roadmap";
 import { DataBackupCard } from "@/components/p35/data-backup-card";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
+import { TestModePanel } from '../components/TestModePanel';
+
 
 export const Route = createFileRoute("/")({
   head: () => ({

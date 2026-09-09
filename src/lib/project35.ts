@@ -46,7 +46,7 @@ export const PHASES: PhaseDef[] = [
         end: "2026-11-29",
         focus: ["Habit", "Deficit"],
         bullets: [
-          "Non-negotiable 6:00 AM lift, seven days a week of showing up",
+          "Non-negotiable 6:00 AM lift, five days a week of showing up",
           "2,000\u20132,400 kcal, 200g+ protein, 12,500 steps daily",
           "Friday weekly average weight is the only scale number that counts",
         ],

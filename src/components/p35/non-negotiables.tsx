@@ -5,21 +5,27 @@ import { useHabitDay } from "@/lib/p35-cloud";
 import { Beef, BookOpen, ChevronLeft, ChevronRight, Dumbbell, Footprints, Sunrise, Utensils } from "lucide-react";
 import { toast } from "sonner";
 
+// Pure UTC helper to avoid timezone day skipping
+function shiftIsoDate(isoDate: string, daysDelta: number): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + daysDelta);
+  return date.toISOString().slice(0, 10);
+}
+
 export function NonNegotiables({ userId }: { userId: string | null }) {
   const actualToday = todayKey();
   const [selectedDay, setSelectedDay] = useState(actualToday);
 
   const { habits, toggle } = useHabitDay(userId, selectedDay);
 
-  // Convert selected string date into Date object
   const currentDateObj = useMemo(() => {
     const [y, m, d] = selectedDay.split("-").map(Number);
-    return new Date(y, m - 1, d);
+    return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
   }, [selectedDay]);
 
   const activeHabits = useMemo(() => getActiveHabits(currentDateObj), [currentDateObj]);
 
-  // Daily Journal Note persistence for the viewed date
   const journalKey = `p35_journal_${selectedDay}`;
   const [note, setNote] = useState<string>("");
 
@@ -54,27 +60,26 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
       onError: (error) => toast.error(error instanceof Error ? error.message : "Could not save."),
     });
 
-  // Date stepper logic (cannot advance beyond current day)
-  const isToday = selectedDay === actualToday;
+  // Predictable date navigation
+  const isToday = selectedDay >= actualToday;
 
   const stepDay = (delta: number) => {
-    const d = new Date(currentDateObj);
-    d.setDate(d.getDate() + delta);
-    const newKey = d.toISOString().slice(0, 10);
-    if (delta > 0 && newKey > actualToday) return;
-    setSelectedDay(newKey);
+    const nextDate = shiftIsoDate(selectedDay, delta);
+    if (delta > 0 && nextDate > actualToday) return;
+    setSelectedDay(nextDate);
   };
 
   const dateHeading = useMemo(() => {
-    if (isToday) return "Today";
+    if (selectedDay === actualToday) return "Today";
     return currentDateObj.toLocaleDateString("en-GB", {
       weekday: "short",
       day: "numeric",
       month: "short",
+      timeZone: "UTC",
     });
-  }, [isToday, currentDateObj]);
+  }, [selectedDay, actualToday, currentDateObj]);
 
-  // Weekly Top Form Score (Monday of actual current week through today)
+  // Weekly Top Form Score (Monday of current week through today)
   const statsMetric = useMemo(() => {
     const now = new Date();
     const currentDay = now.getDay();
@@ -187,7 +192,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         </button>
       </div>
 
-      {/* Dynamic Habits for Selected Date */}
+      {/* Habits Checklist for Selected Date */}
       <div className="space-y-2 pt-0.5">
         <p className="stat-label">Habit Check</p>
         {activeHabits.map((habit) => {

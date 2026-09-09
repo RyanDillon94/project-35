@@ -11,10 +11,13 @@ import {
   Archive,
   Camera,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   FolderArchive,
   ImagePlus,
   Loader2,
   Maximize2,
+  PlusCircle,
   Trash2,
   X,
 } from "lucide-react";
@@ -118,16 +121,14 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
             {simulateFinalWeek ? "Exit Test" : "Test Closeout"}
           </button>
 
-          {(archive?.length ?? 0) > 0 && (
-            <button
-              type="button"
-              onClick={() => setArchiveOpen(true)}
-              className="flex items-center gap-1 rounded-md border border-border bg-surface-2/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <FolderArchive className="size-3.5 text-primary" />
-              Archive ({archive.length})
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setArchiveOpen(true)}
+            className="flex items-center gap-1 rounded-md border border-border bg-surface-2/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <FolderArchive className="size-3.5 text-primary" />
+            Archive ({archive?.length ?? 0})
+          </button>
 
           {/* Tab Pills */}
           <div className="flex rounded-lg border border-border bg-surface-2/60 p-1">
@@ -262,7 +263,6 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
         }}
       />
 
-      {/* Fullscreen Single Photo Modal */}
       {modalImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
@@ -291,7 +291,6 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
         </div>
       )}
 
-      {/* Historical Archive Gallery Modal */}
       {archiveOpen && (
         <ArchiveModal
           archive={archive}
@@ -315,6 +314,57 @@ function ArchiveModal({
   onAngleChange: (a: PhotoAngle) => void;
   onClose: () => void;
 }) {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const [mockList, setMockList] = useState<ArchivedBlockPhotos[] | null>(null);
+
+  const displayArchive = mockList ?? archive;
+
+  const injectMock2YearData = () => {
+    const sampleImg =
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect fill="#18232c" width="300" height="400"/><text fill="#10b981" font-family="sans-serif" font-size="20" font-weight="bold" x="50%" y="50%" text-anchor="middle">Standard P35</text></svg>`,
+      );
+
+    const mocks: ArchivedBlockPhotos[] = [
+      {
+        blockId: "mock-1",
+        blockName: "Phase 1 • Block 1: The Clock",
+        dateClosed: "2026-11-29",
+        front: { baseline: sampleImg, final: sampleImg },
+        side: { baseline: sampleImg, final: sampleImg },
+        back: { baseline: sampleImg, final: sampleImg },
+      },
+      {
+        blockId: "mock-2",
+        blockName: "Phase 1 • Block 2: The Cut",
+        dateClosed: "2027-02-21",
+        front: { baseline: sampleImg, final: sampleImg },
+        side: { baseline: sampleImg, final: sampleImg },
+        back: { baseline: sampleImg, final: sampleImg },
+      },
+      {
+        blockId: "mock-3",
+        blockName: "Phase 2 • Block 1: Reverse Diet",
+        dateClosed: "2027-07-12",
+        front: { baseline: sampleImg, final: sampleImg },
+        side: { baseline: sampleImg, final: sampleImg },
+        back: { baseline: sampleImg, final: sampleImg },
+      },
+      {
+        blockId: "mock-4",
+        blockName: "Phase 2 • Block 2: Heavy Accumulation",
+        dateClosed: "2027-10-04",
+        front: { baseline: sampleImg, final: sampleImg },
+        side: { baseline: sampleImg, final: sampleImg },
+        back: { baseline: sampleImg, final: sampleImg },
+      },
+    ];
+
+    setMockList(mocks);
+    toast.success("Loaded 4 mock historical blocks.");
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
@@ -329,13 +379,25 @@ function ArchiveModal({
             <FolderArchive className="size-4 text-primary" />
             <h3 className="text-sm font-bold">Historical Block Archive</h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {!mockList && (
+              <button
+                type="button"
+                onClick={injectMock2YearData}
+                className="flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary hover:bg-primary/20"
+              >
+                <PlusCircle className="size-3" />
+                Mock 2 Yrs Data
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-center gap-1 border-b border-border/60 bg-surface-2/30 p-2">
@@ -355,57 +417,79 @@ function ArchiveModal({
           ))}
         </div>
 
-        <div className="overflow-y-auto p-4 space-y-6">
-          {archive.map((record) => {
-            const angleData = record[angle] || { baseline: null, final: null };
-            return (
-              <div
-                key={record.blockId + record.dateClosed}
-                className="rounded-xl border border-border bg-surface-2/40 p-3 space-y-3"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-foreground">{record.blockName}</span>
-                  <span className="text-muted-foreground text-[11px]">Closed {record.dateClosed}</span>
-                </div>
+        <div className="overflow-y-auto p-4 space-y-3">
+          {displayArchive.length === 0 ? (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              No archived blocks yet. Click &quot;Mock 2 Yrs Data&quot; above to preview.
+            </p>
+          ) : (
+            displayArchive.map((record, idx) => {
+              const angleData = record[angle] || { baseline: null, final: null };
+              const isOpen = openIndex === idx;
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <p className="stat-label text-center">Baseline</p>
-                    <div className="aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2">
-                      {angleData.baseline ? (
-                        <img
-                          src={angleData.baseline}
-                          alt="Baseline"
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid size-full place-items-center text-[10px] text-muted-foreground">
-                          No Photo
-                        </div>
-                      )}
+              return (
+                <div
+                  key={record.blockId + record.dateClosed}
+                  className="rounded-xl border border-border bg-surface-2/30 overflow-hidden transition-all"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenIndex(isOpen ? null : idx)}
+                    className="w-full flex items-center justify-between p-3.5 text-left hover:bg-surface-2/50 transition-colors"
+                  >
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-foreground">{record.blockName}</p>
+                      <p className="text-[10px] text-muted-foreground">Closed {record.dateClosed}</p>
                     </div>
-                  </div>
+                    <div className="flex items-center gap-1 text-xs font-semibold text-primary">
+                      <span>{isOpen ? "Hide" : "View"}</span>
+                      {isOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                    </div>
+                  </button>
 
-                  <div className="space-y-1">
-                    <p className="stat-label text-center">Final Result</p>
-                    <div className="aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2">
-                      {angleData.final ? (
-                        <img
-                          src={angleData.final}
-                          alt="Final"
-                          className="size-full object-cover"
-                        />
-                      ) : (
-                        <div className="grid size-full place-items-center text-[10px] text-muted-foreground">
-                          No Photo
+                  {isOpen && (
+                    <div className="p-3 border-t border-border/60 bg-surface-2/20">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="stat-label text-center">Baseline</p>
+                          <div className="aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2">
+                            {angleData.baseline ? (
+                              <img
+                                src={angleData.baseline}
+                                alt="Baseline"
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              <div className="grid size-full place-items-center text-[10px] text-muted-foreground">
+                                No Photo
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+
+                        <div className="space-y-1">
+                          <p className="stat-label text-center">Final Result</p>
+                          <div className="aspect-[3/4] overflow-hidden rounded-lg border border-border bg-surface-2">
+                            {angleData.final ? (
+                              <img
+                                src={angleData.final}
+                                alt="Final"
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              <div className="grid size-full place-items-center text-[10px] text-muted-foreground">
+                                No Photo
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>

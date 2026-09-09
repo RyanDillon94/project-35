@@ -19,6 +19,15 @@ export type PhotoSlot = "baseline" | "current";
 export type AnglePhotos = Record<PhotoSlot, string | null>;
 export type PhotosState = Record<PhotoAngle, AnglePhotos>;
 
+export type ArchivedBlockPhotos = {
+  blockId: string;
+  blockName: string;
+  dateClosed: string;
+  front: { baseline: string | null; final: string | null };
+  side: { baseline: string | null; final: string | null };
+  back: { baseline: string | null; final: string | null };
+};
+
 export const DEFAULT_PHOTOS: PhotosState = {
   front: { baseline: null, current: null },
   side: { baseline: null, current: null },
@@ -30,7 +39,6 @@ export type CoachMsg = {
   content: string;
 };
 
-// Safe LocalStorage helpers
 function getLocal<T>(key: string, fallback: T): T {
   try {
     const data = localStorage.getItem(key);
@@ -48,7 +56,6 @@ function setLocal<T>(key: string, value: T): void {
   }
 }
 
-// Helper to pull all daily habit history across all dates
 function getAllLocalHabits(): Record<string, HabitsState> {
   const habits: Record<string, HabitsState> = {};
   try {
@@ -65,7 +72,6 @@ function getAllLocalHabits(): Record<string, HabitsState> {
   return habits;
 }
 
-// Helper to pull all daily journal entries across all dates
 function getAllLocalJournals(): Record<string, string> {
   const journals: Record<string, string> = {};
   try {
@@ -82,7 +88,6 @@ function getAllLocalJournals(): Record<string, string> {
   return journals;
 }
 
-// Normalise photos from localStorage with backwards compatibility
 function getStoredPhotos(): PhotosState {
   const stored = getLocal<any>("p35_photos", DEFAULT_PHOTOS);
   if (stored && "baseline" in stored && !("front" in stored)) {
@@ -99,23 +104,22 @@ function getStoredPhotos(): PhotosState {
   };
 }
 
-// Build a complete snapshot of all dashboard state
 export function buildFullBackup() {
   return {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     weighIns: getLocal("p35_weigh_ins", []),
     hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
     geminiApiKey: localStorage.getItem("p35_gemini_api_key") || "",
     workout: getLocal("p35_cached_workout", null),
     photos: getStoredPhotos(),
+    archivedPhotos: getLocal<ArchivedBlockPhotos[]>("p35_archived_photos", []),
     coachMessages: getLocal("p35_coach_messages", []),
     habits: getAllLocalHabits(),
     journals: getAllLocalJournals(),
   };
 }
 
-// Compress images so phone localStorage does not exceed storage limits
 function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -154,7 +158,6 @@ function compressImage(file: File): Promise<string> {
 export function useHabitDay(userId: string | null, dayKey: string) {
   const qc = useQueryClient();
   const queryKey = ["p35-habits", userId || "local", dayKey];
-
   const defaultHabits: HabitsState = {};
 
   const { data: habits = defaultHabits } = useQuery<HabitsState>({
@@ -251,14 +254,21 @@ export function useUserSettings(userId: string | null) {
   };
 }
 
-// 4. MULTI-ANGLE PHOTOS HOOK
+// 4. MULTI-ANGLE PHOTOS & ARCHIVE HOOK
 export function usePhotos(userId: string | null) {
   const qc = useQueryClient();
-  const queryKey = ["p35-photos", userId || "local"];
+  const photosQueryKey = ["p35-photos", userId || "local"];
+  const archiveQueryKey = ["p35-archived-photos", userId || "local"];
 
   const { data: photos = DEFAULT_PHOTOS } = useQuery<PhotosState>({
-    queryKey,
+    queryKey: photosQueryKey,
     queryFn: getStoredPhotos,
+    staleTime: Infinity,
+  });
+
+  const { data: archive = [] } = useQuery<ArchivedBlockPhotos[]>({
+    queryKey: archiveQueryKey,
+    queryFn: () => getLocal<ArchivedBlockPhotos[]>("p35_archived_photos", []),
     staleTime: Infinity,
   });
 
@@ -285,7 +295,7 @@ export function usePhotos(userId: string | null) {
       return updated;
     },
     onSuccess: (updated) => {
-      qc.setQueryData(queryKey, updated);
+      qc.setQueryData(photosQueryKey, updated);
     },
   });
 
@@ -303,11 +313,43 @@ export function usePhotos(userId: string | null) {
       return updated;
     },
     onSuccess: (updated) => {
-      qc.setQueryData(queryKey, updated);
+      qc.setQueryData(photosQueryKey, updated);
     },
   });
 
-  return { photos, upload, removePhoto };
+  const closeAndArchiveBlock = useMutation({
+    mutationFn: async ({ blockId, blockName }: { blockId: string; blockName: string }) => {
+      const currentPhotos = getStoredPhotos();
+      const currentArchive = getLocal<ArchivedBlockPhotos[]>("p35_archived_photos", []);
+
+      const newArchiveRecord: ArchivedBlockPhotos = {
+        blockId,
+        blockName,
+        dateClosed: new Date().toISOString().slice(0, 10),
+        front: { baseline: currentPhotos.front?.baseline ?? null, final: currentPhotos.front?.current ?? null },
+        side: { baseline: currentPhotos.side?.baseline ?? null, final: currentPhotos.side?.current ?? null },
+        back: { baseline: currentPhotos.back?.baseline ?? null, final: currentPhotos.back?.current ?? null },
+      };
+
+      const updatedArchive = [newArchiveRecord, ...currentArchive];
+      setLocal("p35_archived_photos", updatedArchive);
+
+      const nextBlockPhotos: PhotosState = {
+        front: { baseline: currentPhotos.front?.current ?? currentPhotos.front?.baseline ?? null, current: null },
+        side: { baseline: currentPhotos.side?.current ?? currentPhotos.side?.baseline ?? null, current: null },
+        back: { baseline: currentPhotos.back?.current ?? currentPhotos.back?.baseline ?? null, current: null },
+      };
+
+      setLocal("p35_photos", nextBlockPhotos);
+      return { photos: nextBlockPhotos, archive: updatedArchive };
+    },
+    onSuccess: ({ photos: newPhotos, archive: newArchive }) => {
+      qc.setQueryData(photosQueryKey, newPhotos);
+      qc.setQueryData(archiveQueryKey, newArchive);
+    },
+  });
+
+  return { photos, archive, upload, removePhoto, closeAndArchiveBlock };
 }
 
 // 5. BACKUP EXPORT & IMPORT UTILITIES
@@ -335,8 +377,8 @@ export function importDashboardBackup(file: File): Promise<boolean> {
         if (data.geminiApiKey) localStorage.setItem("p35_gemini_api_key", data.geminiApiKey);
         if (data.workout) setLocal("p35_cached_workout", data.workout);
         if (data.coachMessages) setLocal("p35_coach_messages", data.coachMessages);
+        if (data.archivedPhotos) setLocal("p35_archived_photos", data.archivedPhotos);
 
-        // Restore photos (handling both multi-angle and legacy snapshots)
         if (data.photos) {
           if ("front" in data.photos) {
             setLocal("p35_photos", data.photos);
@@ -349,14 +391,12 @@ export function importDashboardBackup(file: File): Promise<boolean> {
           }
         }
 
-        // Restore all habit states
         if (data.habits && typeof data.habits === "object") {
           for (const [dayKey, state] of Object.entries(data.habits)) {
             setLocal(`p35_habits_${dayKey}`, state);
           }
         }
 
-        // Restore all daily journal entries
         if (data.journals && typeof data.journals === "object") {
           for (const [dayKey, text] of Object.entries(data.journals)) {
             localStorage.setItem(`p35_journal_${dayKey}`, String(text));

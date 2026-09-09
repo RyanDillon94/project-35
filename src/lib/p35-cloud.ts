@@ -183,9 +183,14 @@ export function useUserSettings(userId: string | null) {
   const update = useMutation({
     mutationFn: async (patch: { hevyApiKey?: string; workout?: HevyWorkout | null }) => {
       if (!userId) throw new Error("Sign in first.");
-      const row: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() };
-      if (patch.hevyApiKey !== undefined) row['hevy_api_key'] = patch.hevyApiKey || null;
-      if (patch.workout !== undefined) row['latest_workout'] = patch.workout;
+      const row = {
+        user_id: userId,
+        updated_at: new Date().toISOString(),
+        ...(patch.hevyApiKey !== undefined ? { hevy_api_key: patch.hevyApiKey || null } : {}),
+        ...(patch.workout !== undefined
+          ? { latest_workout: patch.workout as unknown as Json }
+          : {}),
+      };
       const { error } = await supabase.from("user_settings").upsert(row, { onConflict: "user_id" });
       fail(error);
     },

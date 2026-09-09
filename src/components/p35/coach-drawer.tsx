@@ -27,33 +27,24 @@ import { toast } from "sonner";
 
 type Msg = CoachMsg;
 
-const SYSTEM_INSTRUCTIONS = `You are the Project 35 performance coach: direct, no-fluff, technically sharp, and focused on progressive overload and athletic longevity.
+const SYSTEM_INSTRUCTIONS = `You are the Project 35 performance coach: direct, knowledgeable, conversational, and technically sharp.
 
-Rules:
-- Celebrate only earned wins, briefly. No hype, no conversational filler, no emojis.
-- Kilograms in, kilograms out for lifts; pounds for bodyweight.
-- Keep answers under 300 words using tight formatting and clear bullet points.
-- Always conclude with a 3-bullet "Next Session Battle Plan".
+CONTEXT & TONE:
+- You are an expert strength and conditioning partner helping the athlete progress across 12-week blocks toward peak physical shape at age 35 (November 2029).
+- Match the user's intent. If they greet you ("hey", "hello"), respond naturally and ask what they want to tackle today.
+- If they ask general questions about exercise swaps, pain management, recovery, upcoming phases, or pacing, provide direct, intelligent advice grounded in their current block targets without forcing rigid templates.
+- Kilograms for lifts; pounds for bodyweight. Keep responses crisp and actionable.
 
-PROGRESSION MATRIX (Evaluate the final set RPE of each exercise):
-- RPE < 7.0: PROMOTE WEIGHT (+2.5kg next session). Load is too light; leaving too much in the tank.
-- RPE 7.0–8.0: PROGRESS REPS (+1 rep next session). Target sweet spot. Consolidate load and add reps until the top of the rep target is hit, then promote weight.
-- RPE 8.5–9.0: STICK. Working ceiling. Consolidate current volume and lock in form; do not increase load.
-- RPE 9.5–10.0 (Fatigue/Failure): HOLD OR DROP (-1 rep next session). Near technical failure. Hold load, do not promote.
-- Pain / Joint Discomfort Flag: SWAP OR DELOAD (-20% load or swap to neutral grip/joint-friendly variation). Immediate priority is joint longevity.
-
-OUTPUT FORMAT (When reviewing a Hevy workout):
-For each exercise logged in the session:
-1. [Exercise Name]: [Working Weight kg] x [Reps] (Final Set RPE: [Value])
-   - Assessment: [One-line assessment against target]
-   - Next Session Call: [PROMOTE (+2.5kg) | PROGRESS REPS (+1) | STICK | DELOAD]
-   - Notes Feedback: [Direct response to any note the athlete left in Hevy]
-
-End with:
-### Next Session Battle Plan
-- [Promoted loads]
-- [Key mechanical focus or rep target]
-- [Next immediate action]`;
+WORKOUT ANALYSIS MODE:
+Trigger this specific structured format ONLY when the user explicitly asks to analyse, review, or evaluate a workout/session:
+- Evaluate the final set RPE of each exercise logged:
+  * RPE < 7.0: PROMOTE (+2.5kg next session).
+  * RPE 7.0–8.0: PROGRESS REPS (+1 rep next session).
+  * RPE 8.5–9.0: STICK (Consolidate weight/form).
+  * RPE 9.5–10.0: HOLD OR DROP (-1 rep).
+  * Pain flag: SWAP OR DELOAD (-20% or neutral grip alternative).
+- For each exercise: list load x reps, RPE, assessment, next session call, and feedback on athlete notes.
+- Conclude ONLY workout analyses with a 3-bullet "Next Session Battle Plan".`;
 
 function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   const block = getActiveBlockCountdown();
@@ -64,15 +55,15 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   const latest = sorted[sorted.length - 1]?.weight;
 
   const lines = [
-    `CURRENT BLOCK OBJECTIVE: ${block.phaseTitle} • ${block.blockName} (Week ${block.currentWeek} of ${block.totalWeeks})`,
-    `Focus: ${block.goal}`,
-    `Goal weight: ${GOAL_WEIGHT} lb. Current: ${latest ?? "unknown"} lb. Trend: ${trend}.`,
-    `Daily Targets: ${DAILY_TARGETS.caloriesMin}–${DAILY_TARGETS.caloriesMax} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps} steps.`,
+    `CURRENT BLOCK: ${block.phaseTitle} • ${block.blockName} (Week ${block.currentWeek} of ${block.totalWeeks})`,
+    `Block Focus: ${block.goal}`,
+    `Bodyweight Target: ${GOAL_WEIGHT} lbs (Latest logged: ${latest ?? "unknown"} lbs | Trend: ${trend})`,
+    `Daily Nutrition/Habit Standards: ${DAILY_TARGETS.caloriesMin}–${DAILY_TARGETS.caloriesMax} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps} steps daily.`,
   ];
 
   if (workout) {
     lines.push(
-      `LATEST HEVY WORKOUT: "${workout.title}" on ${workout.startTime ?? "unknown date"}.`,
+      `LATEST WORKOUT LOGGED IN HEVY: "${workout.title}" on ${workout.startTime ?? "recent"}.`,
       ...workout.exercises.map((ex) => {
         const lastSet = ex.sets[ex.sets.length - 1];
         const setStr = ex.sets
@@ -95,8 +86,22 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   return lines.join("\n");
 }
 
-async function callGemini(apiKey: string, prompt: string, systemContext: string) {
+async function callGemini(
+  apiKey: string,
+  history: CoachMsg[],
+  newPrompt: string,
+  systemContext: string,
+) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+
+  // Map history to Gemini content structure
+  const contents = [
+    ...history.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    })),
+    { role: "user", parts: [{ text: newPrompt }] },
+  ];
 
   const res = await fetch(url, {
     method: "POST",
@@ -105,11 +110,11 @@ async function callGemini(apiKey: string, prompt: string, systemContext: string)
       systemInstruction: {
         parts: [
           {
-            text: `${SYSTEM_INSTRUCTIONS}\n\nATHLETE & BLOCK CONTEXT:\n${systemContext}`,
+            text: `${SYSTEM_INSTRUCTIONS}\n\nATHLETE PROFILE & LIVE METRICS:\n${systemContext}`,
           },
         ],
       },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      contents,
     }),
   });
 
@@ -188,8 +193,14 @@ export function CoachDrawer({
     setLoading(true);
 
     try {
+      const currentHistory = [...messages];
       await add.mutateAsync({ role: "user", content: trimmed });
-      const reply = await callGemini(apiKey, trimmed, buildContext(workout, entries));
+      const reply = await callGemini(
+        apiKey,
+        currentHistory,
+        trimmed,
+        buildContext(workout, entries),
+      );
       await add.mutateAsync({ role: "assistant", content: reply });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Coach is unavailable.");
@@ -231,7 +242,7 @@ export function CoachDrawer({
           <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
             {messages.length === 0 && !loading && (
               <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                Ask about a stalling lift, progressive overload calls, or tap the quick action below.
+                Ask anything about your lifts, exercise swaps, upcoming phases, or tap the button below for a full session breakdown.
               </p>
             )}
             {messages.map((m, i) => (
@@ -248,7 +259,7 @@ export function CoachDrawer({
             ))}
             {loading && (
               <div className="mr-auto flex items-center gap-2 rounded-2xl border border-border bg-surface-2/70 px-4 py-2.5 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Evaluating progression matrix...
+                <Loader2 className="size-4 animate-spin" /> Thinking...
               </div>
             )}
             <div ref={endRef} />
@@ -260,7 +271,7 @@ export function CoachDrawer({
               className="w-full"
               disabled={loading}
               onClick={() =>
-                send("Analyse my last Hevy workout against current block targets. Evaluate RPE for each exercise, provide promote/stick/deload calls, and build my next session plan.")
+                send("Please analyse my last Hevy workout against current block targets. Evaluate RPE for each exercise, provide promote/stick/deload calls, and build my next session plan.")
               }
             >
               <Sparkles className="size-4" /> Analyse Workout & Progression
@@ -275,7 +286,7 @@ export function CoachDrawer({
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about a lift, RPE, or progression..."
+                placeholder="Ask about a lift, swap, or current phase..."
                 className="h-11"
               />
               <Button

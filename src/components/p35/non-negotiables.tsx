@@ -26,7 +26,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      textareaRef.current.style.height = `${Math.max(68, textareaRef.current.scrollHeight)}px`;
     }
   }, [note]);
 
@@ -44,31 +44,41 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
       onError: (error) => toast.error(error instanceof Error ? error.message : "Could not save."),
     });
 
-  // Rolling 6-week top form calculation
+  // Current Week Top Form Calculation (Monday of this week through today)
   const statsMetric = useMemo(() => {
-    let checkedCount = 0;
-    let daysTracked = 0;
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday
+    const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
 
-    for (let i = 0; i < 42; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+    let totalPossibleChecks = 0;
+    let totalCompletedChecks = 0;
+
+    for (let i = 0; i <= daysSinceMonday; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - (daysSinceMonday - i));
       const k = d.toISOString().slice(0, 10);
+
+      const dayHabits = getActiveHabits(d);
+      totalPossibleChecks += dayHabits.length;
+
       const raw = localStorage.getItem(`p35_habits_${k}`);
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
-          const entries = Object.values(parsed);
-          if (entries.length > 0) {
-            daysTracked++;
-            checkedCount += entries.filter(Boolean).length / entries.length;
-          }
+          dayHabits.forEach((h) => {
+            if (parsed[h.key]) totalCompletedChecks++;
+          });
         } catch {
-          // ignore invalid json
+          // ignore corrupted data
         }
       }
     }
 
-    const formScore = daysTracked > 0 ? Math.round((checkedCount / daysTracked) * 100) : 100;
+    const formScore =
+      totalPossibleChecks > 0
+        ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100)
+        : 100;
+
     return { formScore };
   }, [habits]);
 
@@ -95,7 +105,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-            {statsMetric.formScore}% Top Form
+            {statsMetric.formScore}% Week Form
           </span>
           <span className="font-display text-sm text-primary">
             {done}/{activeHabits.length}
@@ -119,7 +129,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         ))}
       </div>
 
-      {/* Dynamic Habits for the Active Block */}
+      {/* Dynamic Habits for Today */}
       <div className="space-y-2 pt-1">
         <p className="stat-label">Today&apos;s habit check</p>
         {activeHabits.map((habit) => {
@@ -163,11 +173,11 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         </div>
         <textarea
           ref={textareaRef}
-          rows={1}
+          rows={2}
           value={note}
           placeholder="Log weight, workout reflection, hunger, or thoughts..."
           onChange={(e) => handleNoteChange(e.target.value)}
-          className="w-full resize-none overflow-hidden rounded-lg border border-border bg-surface-2/40 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
+          className="w-full min-h-[68px] resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2.5 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
         />
       </div>
     </section>

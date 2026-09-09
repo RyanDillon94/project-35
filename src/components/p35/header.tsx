@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { getActiveBlockCountdown } from "@/lib/project35";
-import { Calendar, CalendarClock, Flame, ShieldHalf, Target } from "lucide-react";
+import { Calendar, Flame, ShieldHalf, Target } from "lucide-react";
 
 export function DashboardHeader() {
   const {
@@ -12,7 +12,6 @@ export function DashboardHeader() {
     totalWeeks,
     daysLeft,
     progress,
-    longTermTarget,
   } = getActiveBlockCountdown();
 
   return (
@@ -33,15 +32,11 @@ export function DashboardHeader() {
         Built over years. Ready for everything. Arrive at 35 in undeniable shape.
       </p>
 
-      {/* Dynamic Phase Badge & Long Term Target */}
+      {/* Phase Badge */}
       <div className="flex flex-wrap items-center gap-2">
         <Badge className="gap-1.5 bg-primary/15 text-primary hover:bg-primary/20">
           <Flame className="size-3.5" />
           {phaseTitle} ({blockName})
-        </Badge>
-        <Badge variant="outline" className="gap-1.5 border-border text-muted-foreground">
-          <CalendarClock className="size-3.5" />
-          {longTermTarget}
         </Badge>
       </div>
 
@@ -59,19 +54,15 @@ export function DashboardHeader() {
         </div>
       </div>
 
-      {/* 3 Metric Cards */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-lg border border-border bg-surface-2/60 p-3 text-center">
+      {/* 2 Metric Cards */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border border-border bg-surface-2/60 p-3.5 text-center">
           <p className="font-display text-2xl font-bold text-primary">Week {currentWeek}</p>
-          <p className="stat-label mt-0.5">Of {totalWeeks} Weeks</p>
+          <p className="stat-label mt-0.5">Of {totalWeeks}</p>
         </div>
-        <div className="rounded-lg border border-border bg-surface-2/60 p-3 text-center">
+        <div className="rounded-lg border border-border bg-surface-2/60 p-3.5 text-center">
           <p className="font-display text-2xl font-bold text-primary">{daysLeft}</p>
           <p className="stat-label mt-0.5">Days Left</p>
-        </div>
-        <div className="rounded-lg border border-border bg-surface-2/60 p-3 text-center">
-          <p className="font-display text-2xl font-bold text-primary">{progress}%</p>
-          <p className="stat-label mt-0.5">Block Progress</p>
         </div>
       </div>
 

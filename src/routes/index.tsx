@@ -65,3 +65,8 @@ function Dashboard({ userId }: { userId: string }) {
     </main>
   );
 }
+
+import { DataBackupCard } from "@/components/p35/data-backup-card";
+
+// Inside your main page JSX, right before the closing tag of your scroll container:
+<DataBackupCard />

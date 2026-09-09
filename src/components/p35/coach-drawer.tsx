@@ -38,6 +38,25 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   return lines.join("\n");
 }
 
+function CoachText({ text }: { text: string }) {
+  return (
+    <>
+      {text
+        .replace(/^\s*[*-]\s+/gm, "\u2022 ")
+        .split(/(\*\*[^*]+\*\*)/g)
+        .map((part, i) =>
+          part.startsWith("**") && part.endsWith("**") ? (
+            <strong key={i} className="text-primary">
+              {part.slice(2, -2)}
+            </strong>
+          ) : (
+            <span key={i}>{part}</span>
+          ),
+        )}
+    </>
+  );
+}
+
 export function CoachDrawer({
   workout,
   entries,

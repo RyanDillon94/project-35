@@ -1,17 +1,27 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PHASES, countdownTo } from "@/lib/project35";
-import { Map, Timer } from "lucide-react";
+import { PHASES } from "@/lib/project35";
+import { Calendar, Map } from "lucide-react";
 
-function BlockCountdown({ end }: { end: string }) {
-  const { weeks, days } = countdownTo(new Date(`${end}T00:00:00Z`));
-  return (
-    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Timer className="size-3.5 text-primary" />
-      {days > 0 ? `${weeks} weeks / ${days} days to block end` : "Block complete"}
-    </p>
-  );
+function formatBlockWindow(startIso: string, endIso: string): string {
+  const [sy, sm, sd] = startIso.split("-").map(Number);
+  const [ey, em, ed] = endIso.split("-").map(Number);
+  const start = new Date(Date.UTC(sy, sm - 1, sd));
+  const end = new Date(Date.UTC(ey, em - 1, ed));
+
+  const startStr = start.toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const endStr = end.toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+  return `${startStr} – ${endStr}`;
 }
 
 export function Roadmap() {
@@ -69,7 +79,10 @@ export function Roadmap() {
                       <p className="text-sm font-semibold">{block.name}</p>
                       <p className="stat-label mt-0.5">{block.window}</p>
                     </div>
-                    <BlockCountdown end={block.end} />
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                      <Calendar className="size-3.5 shrink-0" />
+                      {formatBlockWindow(block.start, block.end)}
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {block.focus.map((f) => (
                         <Badge key={f} className="bg-surface-2 text-[11px] text-foreground hover:bg-surface-2">

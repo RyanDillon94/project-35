@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { WeightEntry } from "@/components/p35/weight-card";
 import type { HevyWorkout } from "@/lib/hevy.functions";
+import type { Json } from "@/integrations/supabase/types";
 
 export type PhotoSlot = "baseline" | "current";
 export type HabitKey = "gym" | "steps" | "protein";

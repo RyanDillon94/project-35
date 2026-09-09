@@ -17,7 +17,6 @@ import {
   ImagePlus,
   Loader2,
   Maximize2,
-  RotateCcw,
   Trash2,
   X,
 } from "lucide-react";
@@ -92,12 +91,6 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
     );
   };
 
-  const handlePurgeAllPhotos = () => {
-    localStorage.removeItem("p35_photos");
-    localStorage.removeItem("p35_archived_photos");
-    window.location.reload();
-  };
-
   const slots: Array<{ slot: PhotoSlot; label: string; sublabel: string }> = [
     { slot: "baseline", label: "Block Baseline", sublabel: "Day 1 Anchor" },
     { slot: "current", label: "Current / Final", sublabel: "Latest Checkpoint" },
@@ -105,7 +98,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
 
   return (
     <section className="panel p-5 space-y-4">
-      {/* Header */}
+      {/* Header with Angle Tabs & Archive Button */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Camera className="size-5 text-primary" />
@@ -113,17 +106,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
           {upload.isPending && <Loader2 className="size-4 animate-spin text-primary" />}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Temporary Wipe Button */}
-          <button
-            type="button"
-            onClick={handlePurgeAllPhotos}
-            className="flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/20 active:bg-destructive/30"
-          >
-            <RotateCcw className="size-3" />
-            Reset All Photos
-          </button>
-
+        <div className="flex items-center gap-2">
           {(archive?.length ?? 0) > 0 && (
             <button
               type="button"

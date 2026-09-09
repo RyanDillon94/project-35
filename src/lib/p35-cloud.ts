@@ -12,15 +12,10 @@ export type UserSettings = {
 };
 
 export type HabitKey = "gym" | "steps" | "protein";
-
 export type HabitsState = Record<HabitKey, boolean>;
 
-export type CheckpointPhoto = {
-  id: string;
-  date: string;
-  label: "Front" | "Side" | "Back";
-  dataUrl: string;
-};
+export type PhotoSlot = "baseline" | "current";
+export type PhotosState = Record<PhotoSlot, string | null>;
 
 // Safe LocalStorage helpers
 function getLocal<T>(key: string, fallback: T): T {
@@ -40,7 +35,42 @@ function setLocal<T>(key: string, value: T): void {
   }
 }
 
-// 1. HABITS HOOK (Matches non-negotiables.tsx)
+// Compress images so phone localStorage does not exceed storage limits
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 1000;
+        let { width, height } = img;
+
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas context failed"));
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// 1. HABITS HOOK
 export function useHabitDay(userId: string | null, dayKey: string) {
   const qc = useQueryClient();
   const queryKey = ["p35-habits", userId || "local", dayKey];
@@ -150,16 +180,22 @@ export function usePhotos(userId: string | null) {
   const qc = useQueryClient();
   const queryKey = ["p35-photos", userId || "local"];
 
-  const { data: photos = [] } = useQuery<CheckpointPhoto[]>({
+  const defaultPhotos: PhotosState = {
+    baseline: null,
+    current: null,
+  };
+
+  const { data: photos = defaultPhotos } = useQuery<PhotosState>({
     queryKey,
-    queryFn: () => getLocal<CheckpointPhoto[]>("p35_photos", []),
+    queryFn: () => getLocal<PhotosState>("p35_photos", defaultPhotos),
     staleTime: Infinity,
   });
 
-  const savePhoto = useMutation({
-    mutationFn: async (photo: CheckpointPhoto) => {
-      const current = getLocal<CheckpointPhoto[]>("p35_photos", []);
-      const updated = [photo, ...current.filter((p) => p.id !== photo.id)];
+  const upload = useMutation({
+    mutationFn: async ({ slot, file }: { slot: PhotoSlot; file: File }) => {
+      const dataUrl = await compressImage(file);
+      const current = getLocal<PhotosState>("p35_photos", defaultPhotos);
+      const updated = { ...current, [slot]: dataUrl };
       setLocal("p35_photos", updated);
       return updated;
     },
@@ -168,10 +204,10 @@ export function usePhotos(userId: string | null) {
     },
   });
 
-  return { photos, savePhoto };
+  return { photos, upload };
 }
 
-// 5. BACKUP EXPORT & IMPORT
+// 5. BACKUP EXPORT & IMPORT UTILITIES
 export function exportDashboardBackup() {
   const backup = {
     version: 1,
@@ -179,7 +215,7 @@ export function exportDashboardBackup() {
     weighIns: getLocal("p35_weigh_ins", []),
     hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
     workout: getLocal("p35_cached_workout", null),
-    photos: getLocal("p35_photos", []),
+    photos: getLocal("p35_photos", { baseline: null, current: null }),
   };
 
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });

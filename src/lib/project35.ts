@@ -207,6 +207,28 @@ export function daysBetween(from: Date, to: Date) {
   return Math.ceil((to.getTime() - from.getTime()) / 86_400_000);
 }
 
+/** Phase 1 / Block 1 — the active 12-week cut. */
+export const ACTIVE_BLOCK = {
+  label: "End of Block 1 (12-Week Cut)",
+  start: new Date(`${PHASES[0]!.blocks[0]!.start}T00:00:00Z`),
+  end: new Date(`${PHASES[0]!.blocks[0]!.end}T23:59:59Z`),
+};
+
+export function blockCountdown(
+  start = ACTIVE_BLOCK.start,
+  end = ACTIVE_BLOCK.end,
+  now = new Date(),
+) {
+  const total = Math.max(1, daysBetween(start, end));
+  const daysLeft = Math.max(0, daysBetween(now, end));
+  const elapsed = Math.min(total, Math.max(0, total - daysLeft));
+  return {
+    daysLeft,
+    weeksLeft: Math.ceil(daysLeft / 7),
+    progress: Math.min(100, Math.max(0, Math.round((elapsed / total) * 100))),
+  };
+}
+
 export function countdownTo(target: Date, now = new Date()) {
   const days = Math.max(0, daysBetween(now, target));
   return {

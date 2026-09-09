@@ -6,6 +6,7 @@ import { WeightCard } from "@/components/p35/weight-card";
 import { HevyCard } from "@/components/p35/hevy-card";
 import { CoachDrawer } from "@/components/p35/coach-drawer";
 import { Roadmap } from "@/components/p35/roadmap";
+import { DataBackupCard } from "@/components/p35/data-backup-card";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 
 export const Route = createFileRoute("/")({
@@ -31,7 +32,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  // Bypasses the login wall entirely
   return <Dashboard userId="local-user" />;
 }
 
@@ -61,12 +61,8 @@ function Dashboard({ userId }: { userId: string }) {
           Standalone mode. Add to your home screen for a full-screen experience.
         </p>
       </div>
+      <DataBackupCard />
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
     </main>
   );
 }
-
-import { DataBackupCard } from "@/components/p35/data-backup-card";
-
-// Inside your main page JSX, right before the closing tag of your scroll container:
-<DataBackupCard />

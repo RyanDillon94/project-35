@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/badge";
-import { countdownTo, TARGET_DATE } from "@/lib/project35";
+import { ACTIVE_BLOCK, blockCountdown } from "@/lib/project35";
 import { CalendarClock, Flame, ShieldHalf } from "lucide-react";
 
 export function DashboardHeader() {
-  const { months, weeks, days } = countdownTo(TARGET_DATE);
+  const { weeksLeft, daysLeft, progress } = blockCountdown();
 
   return (
     <header className="panel glow-ring relative overflow-hidden p-5">

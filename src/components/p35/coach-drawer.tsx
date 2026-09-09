@@ -20,28 +20,59 @@ import {
 } from "@/components/ui/dialog";
 import type { HevyWorkout } from "@/lib/hevy.functions";
 import type { WeightEntry } from "@/components/p35/weight-card";
-import { DAILY_TARGETS, GOAL_WEIGHT } from "@/lib/project35";
+import { DAILY_TARGETS, GOAL_WEIGHT, getActiveBlockCountdown } from "@/lib/project35";
 import { useCoachMessages, type CoachMsg } from "@/lib/p35-cloud";
 import { KeyRound, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 type Msg = CoachMsg;
 
+const SYSTEM_INSTRUCTIONS = `You are the Project 35 performance coach: direct, no-fluff, technically sharp, and focused on progressive overload and athletic longevity.
+
+Rules:
+- Celebrate only earned wins, briefly. No hype, no conversational filler, no emojis.
+- Kilograms in, kilograms out for lifts; pounds for bodyweight.
+- Keep answers under 300 words using tight formatting and clear bullet points.
+- Always conclude with a 3-bullet "Next Session Battle Plan".
+
+PROGRESSION MATRIX (Evaluate the final set RPE of each exercise):
+- RPE < 7.0: PROMOTE WEIGHT (+2.5kg next session). Load is too light; leaving too much in the tank.
+- RPE 7.0–8.0: PROGRESS REPS (+1 rep next session). Target sweet spot. Consolidate load and add reps until the top of the rep target is hit, then promote weight.
+- RPE 8.5–9.0: STICK. Working ceiling. Consolidate current volume and lock in form; do not increase load.
+- RPE 9.5–10.0 (Fatigue/Failure): HOLD OR DROP (-1 rep next session). Near technical failure. Hold load, do not promote.
+- Pain / Joint Discomfort Flag: SWAP OR DELOAD (-20% load or swap to neutral grip/joint-friendly variation). Immediate priority is joint longevity.
+
+OUTPUT FORMAT (When reviewing a Hevy workout):
+For each exercise logged in the session:
+1. [Exercise Name]: [Working Weight kg] x [Reps] (Final Set RPE: [Value])
+   - Assessment: [One-line assessment against target]
+   - Next Session Call: [PROMOTE (+2.5kg) | PROGRESS REPS (+1) | STICK | DELOAD]
+   - Notes Feedback: [Direct response to any note the athlete left in Hevy]
+
+End with:
+### Next Session Battle Plan
+- [Promoted loads]
+- [Key mechanical focus or rep target]
+- [Next immediate action]`;
+
 function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
+  const block = getActiveBlockCountdown();
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const trend =
     sorted.slice(-6).map((e) => `${e.date}: ${e.weight} lb`).join(", ") ||
     "no weigh-ins logged yet";
   const latest = sorted[sorted.length - 1]?.weight;
+
   const lines = [
-    `Goal weight: ${GOAL_WEIGHT} lb. Current: ${latest ?? "unknown"} lb.`,
-    `Friday weekly averages: ${trend}.`,
-    `Deficit target: ${DAILY_TARGETS.caloriesMin}-${DAILY_TARGETS.caloriesMax} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps} steps daily.`,
-    "Phase 1, Block 1 (Weeks 1-12): establish the 6:00 AM lift and cut toward 190 lb.",
+    `CURRENT BLOCK OBJECTIVE: ${block.phaseTitle} • ${block.blockName} (Week ${block.currentWeek} of ${block.totalWeeks})`,
+    `Focus: ${block.goal}`,
+    `Goal weight: ${GOAL_WEIGHT} lb. Current: ${latest ?? "unknown"} lb. Trend: ${trend}.`,
+    `Daily Targets: ${DAILY_TARGETS.caloriesMin}–${DAILY_TARGETS.caloriesMax} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps} steps.`,
   ];
+
   if (workout) {
     lines.push(
-      `Latest Hevy workout: "${workout.title}" on ${workout.startTime ?? "unknown date"}.`,
+      `LATEST HEVY WORKOUT: "${workout.title}" on ${workout.startTime ?? "unknown date"}.`,
       ...workout.exercises.map((ex) => {
         const lastSet = ex.sets[ex.sets.length - 1];
         const setStr = ex.sets
@@ -65,7 +96,7 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
 }
 
 async function callGemini(apiKey: string, prompt: string, systemContext: string) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
   const res = await fetch(url, {
     method: "POST",
@@ -74,7 +105,7 @@ async function callGemini(apiKey: string, prompt: string, systemContext: string)
       systemInstruction: {
         parts: [
           {
-            text: `You are Coach AI for Project 35. You provide direct, high-accountability, no-fluff fitness feedback. Give concise, actionable answers referencing the athlete's actual numbers. Do not lecture or ramble.\n\nATHLETE CONTEXT:\n${systemContext}`,
+            text: `${SYSTEM_INSTRUCTIONS}\n\nATHLETE & BLOCK CONTEXT:\n${systemContext}`,
           },
         ],
       },
@@ -200,7 +231,7 @@ export function CoachDrawer({
           <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
             {messages.length === 0 && !loading && (
               <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                Ask about a stalling lift, your deficit, or tap the quick action below.
+                Ask about a stalling lift, progressive overload calls, or tap the quick action below.
               </p>
             )}
             {messages.map((m, i) => (
@@ -217,7 +248,7 @@ export function CoachDrawer({
             ))}
             {loading && (
               <div className="mr-auto flex items-center gap-2 rounded-2xl border border-border bg-surface-2/70 px-4 py-2.5 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Reading your numbers
+                <Loader2 className="size-4 animate-spin" /> Evaluating progression matrix...
               </div>
             )}
             <div ref={endRef} />
@@ -229,10 +260,10 @@ export function CoachDrawer({
               className="w-full"
               disabled={loading}
               onClick={() =>
-                send("Analyse my last Hevy workout against my weight trend and deficit target.")
+                send("Analyse my last Hevy workout against current block targets. Evaluate RPE for each exercise, provide promote/stick/deload calls, and build my next session plan.")
               }
             >
-              <Sparkles className="size-4" /> Analyse Last Hevy Workout
+              <Sparkles className="size-4" /> Analyse Workout & Progression
             </Button>
             <form
               className="flex gap-2"
@@ -244,7 +275,7 @@ export function CoachDrawer({
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask your coach"
+                placeholder="Ask about a lift, RPE, or progression..."
                 className="h-11"
               />
               <Button
@@ -260,7 +291,6 @@ export function CoachDrawer({
         </SheetContent>
       </Sheet>
 
-      {/* API Key Modal */}
       <Dialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen}>
         <DialogContent>
           <DialogHeader>

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const Input = z.object({ apiKey: z.string().min(4) });
 
-export type HevySet = { weightKg: number | null; reps: number | null; type?: string };
+export type HevySet = { weightKg: number | null; reps: number | null; type?: string | undefined };
 export type HevyExercise = { title: string; sets: HevySet[] };
 export type HevyWorkout = {
   id: string;

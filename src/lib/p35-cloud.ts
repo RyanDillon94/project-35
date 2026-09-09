@@ -1,207 +1,216 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { WeightEntry } from "@/components/p35/weight-card";
-import type { HevyWorkout } from "@/lib/hevy.functions";
-import type { Json } from "@/integrations/supabase/types";
+import type { HevyWorkout } from "./hevy.functions";
 
-export type PhotoSlot = "baseline" | "current";
-export type HabitKey = "gym" | "steps" | "protein";
-export type CoachMsg = { role: "user" | "assistant"; content: string };
+export type WeightEntry = {
+  date: string;
+  weight: number;
+};
 
-const PHOTO_BUCKET = "progress-photos";
+export type UserSettings = {
+  hevyApiKey: string;
+  workout: HevyWorkout | null;
+};
 
-function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+export type HabitDay = {
+  date: string;
+  gymCompleted: boolean;
+  stepsHit: boolean;
+  proteinBanked: boolean;
+};
+
+export type CheckpointPhoto = {
+  id: string;
+  date: string;
+  label: "Front" | "Side" | "Back";
+  dataUrl: string;
+};
+
+// Safe LocalStorage helpers
+function getLocal<T>(key: string, fallback: T): T {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-/* ---------------- weigh-ins ---------------- */
+function setLocal<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.error(`Failed to save ${key} to localStorage:`, err);
+  }
+}
 
-export function useWeighIns(userId: string | null) {
+// 1. WEIGH-INS HOOK
+export function useWeighIns(userId: string) {
   const qc = useQueryClient();
+  const queryKey = ["p35-weigh-ins", userId];
 
-  const query = useQuery({
-    queryKey: ["weigh-ins", userId],
-    enabled: !!userId,
-    queryFn: async (): Promise<WeightEntry[]> => {
-      const { data, error } = await supabase
-        .from("weigh_ins")
-        .select("entry_date, weight_lbs")
-        .order("entry_date", { ascending: true });
-      fail(error);
-      return (data ?? []).map((row) => ({
-        date: row.entry_date,
-        weight: Number(row.weight_lbs),
-      }));
-    },
+  const { data: entries = [] } = useQuery<WeightEntry[]>({
+    queryKey,
+    queryFn: () => getLocal<WeightEntry[]>("p35_weigh_ins", []),
+    staleTime: Infinity,
   });
 
   const save = useMutation({
     mutationFn: async (entry: WeightEntry) => {
-      if (!userId) throw new Error("Sign in first.");
-      const { error } = await supabase.from("weigh_ins").upsert(
-        { user_id: userId, entry_date: entry.date, weight_lbs: entry.weight },
-        { onConflict: "user_id,entry_date" },
-      );
-      fail(error);
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["weigh-ins", userId] }),
-  });
-
-  return { entries: query.data ?? [], loading: query.isLoading, save };
-}
-
-/* ---------------- habits ---------------- */
-
-export function useHabitDay(userId: string | null, day: string) {
-  const qc = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ["habit-day", userId, day],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("habit_days")
-        .select("gym, steps, protein")
-        .eq("day", day)
-        .maybeSingle();
-      fail(error);
-      return data ?? { gym: false, steps: false, protein: false };
-    },
-  });
-
-  const habits = query.data ?? { gym: false, steps: false, protein: false };
-
-  const toggle = useMutation({
-    mutationFn: async (key: HabitKey) => {
-      if (!userId) throw new Error("Sign in first.");
-      const { error } = await supabase.from("habit_days").upsert(
-        { user_id: userId, day, ...habits, [key]: !habits[key], updated_at: new Date().toISOString() },
-        { onConflict: "user_id,day" },
-      );
-      fail(error);
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["habit-day", userId, day] }),
-  });
-
-  return { habits, toggle };
-}
-
-/* ---------------- photos ---------------- */
-
-export function usePhotos(userId: string | null) {
-  const qc = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ["progress-photos", userId],
-    enabled: !!userId,
-    queryFn: async (): Promise<Partial<Record<PhotoSlot, string>>> => {
-      const { data, error } = await supabase.from("progress_photos").select("slot, storage_path");
-      fail(error);
-      const urls: Partial<Record<PhotoSlot, string>> = {};
-      for (const row of data ?? []) {
-        const { data: signed } = await supabase.storage
-          .from(PHOTO_BUCKET)
-          .createSignedUrl(row.storage_path, 60 * 60);
-        if (signed?.signedUrl) urls[row.slot as PhotoSlot] = signed.signedUrl;
+      const current = getLocal<WeightEntry[]>("p35_weigh_ins", []);
+      const index = current.findIndex((e) => e.date === entry.date);
+      let updated: WeightEntry[];
+      if (index >= 0) {
+        updated = [...current];
+        updated[index] = entry;
+      } else {
+        updated = [...current, entry];
       }
-      return urls;
+      setLocal("p35_weigh_ins", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
     },
   });
 
-  const upload = useMutation({
-    mutationFn: async ({ slot, file }: { slot: PhotoSlot; file: File }) => {
-      if (!userId) throw new Error("Sign in first.");
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${userId}/${slot}-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from(PHOTO_BUCKET)
-        .upload(path, file, { contentType: file.type || "image/jpeg", upsert: true });
-      fail(uploadError);
-      const { error } = await supabase.from("progress_photos").upsert(
-        { user_id: userId, slot, storage_path: path, updated_at: new Date().toISOString() },
-        { onConflict: "user_id,slot" },
-      );
-      fail(error);
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["progress-photos", userId] }),
-  });
-
-  return { photos: query.data ?? {}, upload };
+  return { entries, save };
 }
 
-/* ---------------- coach chat ---------------- */
-
-export function useCoachMessages(userId: string | null) {
+// 2. USER SETTINGS & HEVY WORKOUT HOOK
+export function useUserSettings(userId: string) {
   const qc = useQueryClient();
+  const queryKey = ["p35-settings", userId];
 
-  const query = useQuery({
-    queryKey: ["coach-messages", userId],
-    enabled: !!userId,
-    queryFn: async (): Promise<CoachMsg[]> => {
-      const { data, error } = await supabase
-        .from("coach_messages")
-        .select("role, content")
-        .order("created_at", { ascending: true })
-        .limit(200);
-      fail(error);
-      return (data ?? []).map((row) => ({ role: row.role as CoachMsg["role"], content: row.content }));
+  const { data = { hevyApiKey: "", workout: null } } = useQuery<UserSettings>({
+    queryKey,
+    queryFn: () => {
+      const apiKey = localStorage.getItem("p35_hevy_api_key") || "";
+      const workout = getLocal<HevyWorkout | null>("p35_cached_workout", null);
+      return { hevyApiKey: apiKey, workout };
     },
-  });
-
-  const add = useMutation({
-    mutationFn: async (message: CoachMsg) => {
-      if (!userId) throw new Error("Sign in first.");
-      const { error } = await supabase.from("coach_messages").insert({ user_id: userId, ...message });
-      fail(error);
-    },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["coach-messages", userId] }),
-  });
-
-  return { messages: query.data ?? [], add };
-}
-
-/* ---------------- settings (Hevy key + last workout) ---------------- */
-
-export function useUserSettings(userId: string | null) {
-  const qc = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ["user-settings", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_settings")
-        .select("hevy_api_key, latest_workout")
-        .maybeSingle();
-      fail(error);
-      return {
-        hevyApiKey: data?.hevy_api_key ?? "",
-        workout: (data?.latest_workout as HevyWorkout | null) ?? null,
-      };
-    },
+    staleTime: Infinity,
   });
 
   const update = useMutation({
-    mutationFn: async (patch: { hevyApiKey?: string; workout?: HevyWorkout | null }) => {
-      if (!userId) throw new Error("Sign in first.");
-      const row = {
-        user_id: userId,
-        updated_at: new Date().toISOString(),
-        ...(patch.hevyApiKey !== undefined ? { hevy_api_key: patch.hevyApiKey || null } : {}),
-        ...(patch.workout !== undefined
-          ? { latest_workout: patch.workout as unknown as Json }
-          : {}),
-      };
-      const { error } = await supabase.from("user_settings").upsert(row, { onConflict: "user_id" });
-      fail(error);
+    mutationFn: async (patch: Partial<UserSettings>) => {
+      if (patch.hevyApiKey !== undefined) {
+        localStorage.setItem("p35_hevy_api_key", patch.hevyApiKey);
+      }
+      if (patch.workout !== undefined) {
+        setLocal("p35_cached_workout", patch.workout);
+      }
+      const current = getLocal<UserSettings>("p35-settings", {
+        hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+        workout: getLocal<HevyWorkout | null>("p35_cached_workout", null),
+      });
+      return { ...current, ...patch };
     },
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["user-settings", userId] }),
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
   });
 
   return {
-    hevyApiKey: query.data?.hevyApiKey ?? "",
-    workout: query.data?.workout ?? null,
-    loading: query.isLoading,
+    hevyApiKey: data.hevyApiKey,
+    workout: data.workout,
     update,
   };
+}
+
+// 3. DAILY NON-NEGOTIABLES / HABITS HOOK
+export function useHabits(userId: string, dateKey: string) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-habits", userId, dateKey];
+
+  const defaultDay: HabitDay = {
+    date: dateKey,
+    gymCompleted: false,
+    stepsHit: false,
+    proteinBanked: false,
+  };
+
+  const { data: day = defaultDay } = useQuery<HabitDay>({
+    queryKey,
+    queryFn: () => getLocal<HabitDay>(`p35_habits_${dateKey}`, defaultDay),
+    staleTime: Infinity,
+  });
+
+  const toggle = useMutation({
+    mutationFn: async (habitKey: keyof Omit<HabitDay, "date">) => {
+      const current = getLocal<HabitDay>(`p35_habits_${dateKey}`, defaultDay);
+      const updated = { ...current, [habitKey]: !current[habitKey] };
+      setLocal(`p35_habits_${dateKey}`, updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { day, toggle };
+}
+
+// 4. PHOTO CHECKPOINTS HOOK
+export function usePhotos(userId: string) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-photos", userId];
+
+  const { data: photos = [] } = useQuery<CheckpointPhoto[]>({
+    queryKey,
+    queryFn: () => getLocal<CheckpointPhoto[]>("p35_photos", []),
+    staleTime: Infinity,
+  });
+
+  const savePhoto = useMutation({
+    mutationFn: async (photo: CheckpointPhoto) => {
+      const current = getLocal<CheckpointPhoto[]>("p35_photos", []);
+      const updated = [photo, ...current.filter((p) => p.id !== photo.id)];
+      setLocal("p35_photos", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { photos, savePhoto };
+}
+
+// 5. EXPORT / IMPORT BACKUP UTILITIES
+export function exportDashboardBackup() {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    weighIns: getLocal("p35_weigh_ins", []),
+    hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+    workout: getLocal("p35_cached_workout", null),
+    photos: getLocal("p35_photos", []),
+  };
+
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `project35-backup-${new Date().toISOString().split("T")[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function importDashboardBackup(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.weighIns) setLocal("p35_weigh_ins", data.weighIns);
+        if (data.hevyApiKey) localStorage.setItem("p35_hevy_api_key", data.hevyApiKey);
+        if (data.workout) setLocal("p35_cached_workout", data.workout);
+        if (data.photos) setLocal("p35_photos", data.photos);
+        resolve(true);
+      } catch {
+        resolve(false);
+      }
+    };
+    reader.readAsText(file);
+  });
 }

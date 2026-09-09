@@ -77,7 +77,8 @@ export function CoachDrawer({
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (typeof document === "undefined" || !document.body || !endRef.current) return;
+    endRef.current.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, open]);
 
   const send = async (text: string) => {

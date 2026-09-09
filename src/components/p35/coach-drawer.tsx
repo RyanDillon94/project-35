@@ -111,7 +111,7 @@ export function CoachDrawer({
                   : "mr-auto max-w-[90%] rounded-2xl rounded-bl-sm border border-border bg-surface-2/70 px-4 py-2.5 text-sm whitespace-pre-wrap"
               }
             >
-              {m.content}
+              {m.role === "assistant" ? <CoachText text={m.content} /> : m.content}
             </div>
           ))}
           {loading && (

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { DashboardHeader } from "@/components/p35/header";
 import { NonNegotiables } from "@/components/p35/non-negotiables";
 import { PhotoCheckpoint } from "@/components/p35/photo-checkpoint";
@@ -6,11 +6,7 @@ import { WeightCard } from "@/components/p35/weight-card";
 import { HevyCard } from "@/components/p35/hevy-card";
 import { CoachDrawer } from "@/components/p35/coach-drawer";
 import { Roadmap } from "@/components/p35/roadmap";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useSession } from "@/lib/auth";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
-import { Loader2, LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,38 +31,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { userId, loading } = useSession();
-
-  if (loading) {
-    return (
-      <main className="grid min-h-screen place-items-center">
-        <Loader2 className="size-6 animate-spin text-primary" />
-      </main>
-    );
-  }
-
-  if (!userId) return <SignedOut />;
-
-  return <Dashboard userId={userId} />;
-}
-
-function SignedOut() {
-  return (
-    <main className="mx-auto grid min-h-screen w-full max-w-md place-items-center px-4">
-      <section className="panel glow-ring w-full p-6 text-center">
-        <p className="stat-label">Project 35</p>
-        <h1 className="mt-1 text-2xl font-bold">
-          The <span className="text-primary">Undeniable Standard</span>
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Sign in to load your weight trend, habits, photos and coach chats on this device.
-        </p>
-        <Button asChild className="mt-5 h-11 w-full">
-          <Link to="/auth">Sign in or create an account</Link>
-        </Button>
-      </section>
-    </main>
-  );
+  // Bypasses the login wall entirely
+  return <Dashboard userId="local-user" />;
 }
 
 function Dashboard({ userId }: { userId: string }) {
@@ -92,16 +58,8 @@ function Dashboard({ userId }: { userId: string }) {
       <Roadmap />
       <div className="flex flex-col items-center gap-2 pt-2">
         <p className="text-center text-xs text-muted-foreground">
-          Synced to your account. Add to your home screen for a full-screen experience.
+          Standalone mode. Add to your home screen for a full-screen experience.
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          onClick={() => void supabase.auth.signOut()}
-        >
-          <LogOut className="size-4" /> Sign out
-        </Button>
       </div>
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
     </main>

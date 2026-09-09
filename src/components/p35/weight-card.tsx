@@ -114,7 +114,7 @@ export function WeightCard({
               )}
             </div>
             <DialogFooter>
-              <Button onClick={save} className="w-full sm:w-auto">
+              <Button onClick={() => void save()} disabled={saving} className="w-full sm:w-auto">
                 Save entry
               </Button>
             </DialogFooter>

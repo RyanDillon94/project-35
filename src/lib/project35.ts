@@ -24,7 +24,7 @@ export type BlockDef = {
   end: string;
   focus: string[];
   bullets: string[];
-  habits: HabitDefinition[];
+  blockHabits?: HabitDefinition[];
 };
 
 export type PhaseDef = {
@@ -40,7 +40,7 @@ export type PhaseDef = {
 export const PHASES: PhaseDef[] = [
   {
     id: 1,
-    title: "The Cut & The Clock",
+    title: "The Clock & The Cut",
     window: "Sep 2026 – Feb 2027",
     status: "active",
     summary: "Establish the 6:00 AM habit and drop 30 lbs toward 190 lbs.",
@@ -57,14 +57,12 @@ export const PHASES: PhaseDef[] = [
           "2,000–2,400 kcal, 200g+ protein, 12,500 steps daily",
           "Friday weekly average weight is the only scale number that counts",
         ],
-        habits: [
-          { key: "gym", label: "6:00 AM Gym Session Completed", sublabel: "Weekday Iron" },
+        blockHabits: [
           { key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Activity Base" },
-          { key: "protein", label: "200g+ Protein & Calorie Deficit", sublabel: "Deficit Compliance" },
         ],
       },
       {
-        name: "Block 2: The Cut Deepens",
+        name: "Block 2: The Cut",
         window: "Weeks 13–24",
         start: "2026-11-30",
         end: "2027-02-21",
@@ -74,10 +72,8 @@ export const PHASES: PhaseDef[] = [
           "Add one conditioning finisher twice per week",
           "Land at or under 190 lbs by the end of the block",
         ],
-        habits: [
-          { key: "gym", label: "Lifting Session Executed", sublabel: "Strength Retention Guard" },
-          { key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Non-Negotiable" },
-          { key: "finisher", label: "Conditioning Finisher / Deficit Met", sublabel: "2x Finisher & Macros" },
+        blockHabits: [
+          { key: "finisher", label: "Conditioning Finisher Completed", sublabel: "2x Weekly Finisher" },
         ],
       },
     ],
@@ -100,10 +96,8 @@ export const PHASES: PhaseDef[] = [
           "Calories back to maintenance, then a slow surplus",
           "Compound volume up: squat, bench, deadlift, press",
         ],
-        habits: [
-          { key: "gym", label: "Compound Hypertrophy Session", sublabel: "Progressive Overload" },
-          { key: "surplus", label: "Calorie Target Hit (Surplus)", sublabel: "Fueling Muscle Growth" },
-          { key: "protein", label: "200g+ Protein & Sleep Priority", sublabel: "Recovery Anchor" },
+        blockHabits: [
+          { key: "volume", label: "Compound Volume Target Met", sublabel: "Hypertrophy Standard" },
         ],
       },
       {
@@ -116,10 +110,8 @@ export const PHASES: PhaseDef[] = [
           "Progressive overload on 5–8 rep top sets",
           "Bodyweight climbs no faster than 2 lbs per month",
         ],
-        habits: [
-          { key: "gym", label: "Heavy Top Set Logged", sublabel: "5–8 Rep Progression" },
-          { key: "nutrition", label: "Controlled Surplus Kept", sublabel: "< 2 lb / month gain" },
-          { key: "mobility", label: "Pre-Lift Mobility & Steps Hit", sublabel: "Joint Integrity" },
+        blockHabits: [
+          { key: "top_sets", label: "5–8 Rep Top Set Logged", sublabel: "Progressive Overload" },
         ],
       },
     ],
@@ -139,10 +131,8 @@ export const PHASES: PhaseDef[] = [
         end: "2027-12-27",
         focus: ["Conditioning"],
         bullets: ["Zone 2 base plus weekly intervals", "Carries and sled work every session"],
-        habits: [
-          { key: "gym", label: "Upper Yoke / Lift Session", sublabel: "Hypertrophy Standard" },
+        blockHabits: [
           { key: "engine", label: "Zone 2 Engine / Intervals", sublabel: "Aerobic Capacity" },
-          { key: "steps", label: "Daily Steps & Protein Hit", sublabel: "Recovery Anchor" },
         ],
       },
       {
@@ -152,10 +142,8 @@ export const PHASES: PhaseDef[] = [
         end: "2028-03-20",
         focus: ["Hypertrophy"],
         bullets: ["Traps, delts, upper back triple frequency", "Overhead strength benchmarks"],
-        habits: [
-          { key: "gym", label: "Yoke / Overhead Focus Lift", sublabel: "Traps, Delts, Back" },
-          { key: "carries", label: "Loaded Carries Executed", sublabel: "Work Capacity" },
-          { key: "nutrition", label: "Target Fuel & Hydration Locked", sublabel: "Standard Maintained" },
+        blockHabits: [
+          { key: "yoke", label: "Yoke / Overhead Work Complete", sublabel: "Traps & Delts" },
         ],
       },
     ],
@@ -175,10 +163,8 @@ export const PHASES: PhaseDef[] = [
         end: "2028-06-12",
         focus: ["Strength"],
         bullets: ["Two heavy days, two hybrid days", "Rucking and loaded carries weekly"],
-        habits: [
-          { key: "session", label: "Strength or Hybrid Session", sublabel: "Session Complete" },
-          { key: "engine", label: "Weekly Ruck / Carry Milestone", sublabel: "Engine & Core" },
-          { key: "nutrition", label: "Single-Digit / Lean Fueling Hit", sublabel: "Diet Discipline" },
+        blockHabits: [
+          { key: "hybrid", label: "Ruck / Loaded Carry Logged", sublabel: "Engine & Core" },
         ],
       },
       {
@@ -188,10 +174,8 @@ export const PHASES: PhaseDef[] = [
         end: "2028-09-04",
         focus: ["Conditioning"],
         bullets: ["Benchmark events every four weeks", "Hold body fat in single-to-low teens"],
-        habits: [
-          { key: "session", label: "Training Benchmark Completed", sublabel: "Performance Standard" },
-          { key: "steps", label: "12,500 Steps & Baseline Activity", sublabel: "Active Baseline" },
-          { key: "leanness", label: "Lean Body Composition Held", sublabel: "Low Teens Standard" },
+        blockHabits: [
+          { key: "benchmark", label: "Conditioning Milestone Met", sublabel: "Field Benchmark" },
         ],
       },
     ],
@@ -211,10 +195,8 @@ export const PHASES: PhaseDef[] = [
         end: "2028-11-27",
         focus: ["Hypertrophy"],
         bullets: ["Highest tolerable volume with clean technique", "Weak-point specialisation"],
-        habits: [
+        blockHabits: [
           { key: "density", label: "Density Lift Executed", sublabel: "Clean Form & Volume" },
-          { key: "recovery", label: "Active Recovery & Mobility Hit", sublabel: "Structural Integrity" },
-          { key: "protein", label: "Precision Macros & 200g+ Protein", sublabel: "Target Calibrated" },
         ],
       },
       {
@@ -224,10 +206,8 @@ export const PHASES: PhaseDef[] = [
         end: "2029-02-19",
         focus: ["Fat Loss"],
         bullets: ["Slow controlled cut, zero strength loss", "Full photo and lift audit"],
-        habits: [
-          { key: "gym", label: "Strength Retained Top Sets", sublabel: "Zero Load Compromise" },
-          { key: "cut", label: "Controlled Calorie Ceiling Kept", sublabel: "Final Leaning Phase" },
-          { key: "steps", label: "Daily Steps & Habit Standard", sublabel: "Non-Negotiable Execution" },
+        blockHabits: [
+          { key: "audit", label: "Strength Retained Top Sets", sublabel: "Zero Load Compromise" },
         ],
       },
     ],
@@ -247,10 +227,8 @@ export const PHASES: PhaseDef[] = [
         end: "2029-05-15",
         focus: ["Peaking"],
         bullets: ["Peak conditioning with full strength intact", "Photo checkpoint every four weeks"],
-        habits: [
-          { key: "session", label: "Peak Performance Session Hit", sublabel: "Strength + Conditioning" },
-          { key: "nutrition", label: "Dialed Aesthetic Conditioning Target", sublabel: "P35 Standard" },
-          { key: "mindset", label: "Discipline Checklist Cleared", sublabel: "Total Daily Standards" },
+        blockHabits: [
+          { key: "peaking", label: "Peak Performance Session Hit", sublabel: "Strength + Conditioning" },
         ],
       },
       {
@@ -260,10 +238,8 @@ export const PHASES: PhaseDef[] = [
         end: "2029-11-01",
         focus: ["Identity"],
         bullets: ["Maintain the standard indefinitely", "Arrive at 35 in undeniable shape"],
-        habits: [
-          { key: "standard", label: "The Standard Executed", sublabel: "Lifestyle Identity" },
-          { key: "engine", label: "Athletic Conditioning Standard", sublabel: "Permanent Engine" },
-          { key: "body", label: "35 Identity Physique Held", sublabel: "Undeniable Shape" },
+        blockHabits: [
+          { key: "identity", label: "The Undeniable Standard Held", sublabel: "Permanent Shape" },
         ],
       },
     ],
@@ -305,8 +281,35 @@ export function getActiveBlockDetails(now = new Date()) {
 }
 
 export function getActiveHabits(now = new Date()): HabitDefinition[] {
+  const isWeekend = now.getDay() === 0 || now.getDay() === 6;
   const { activeBlock } = getActiveBlockDetails(now);
-  return activeBlock.habits || PHASES[0].blocks[0].habits;
+
+  // 1. Morning Routine / Gym (swaps to dog walk on weekends)
+  const morningHabit: HabitDefinition = isWeekend
+    ? { key: "morning_routine", label: "Morning Dog Walk Completed", sublabel: "Weekend Routine" }
+    : { key: "morning_routine", label: "6:00 AM Gym Session Completed", sublabel: "Weekday Iron" };
+
+  // 2. Permanent Nutrition Anchor 1: Protein
+  const proteinHabit: HabitDefinition = {
+    key: "protein",
+    label: "200g+ Protein Banked",
+    sublabel: "Muscle Retention & Recovery",
+  };
+
+  // 3. Permanent Nutrition Anchor 2: Calories
+  const caloriesHabit: HabitDefinition = {
+    key: "calories",
+    label: "Calorie Target Hit (2,000–2,400 kcal)",
+    sublabel: "Deficit Discipline",
+  };
+
+  // 4. Dynamic block-specific habit(s)
+  const blockSpecificHabits: HabitDefinition[] =
+    activeBlock.blockHabits && activeBlock.blockHabits.length > 0
+      ? activeBlock.blockHabits
+      : [{ key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Activity Base" }];
+
+  return [morningHabit, ...blockSpecificHabits, proteinHabit, caloriesHabit];
 }
 
 export function getActiveBlockCountdown(now = new Date()) {
@@ -334,7 +337,8 @@ export function getActiveBlockCountdown(now = new Date()) {
   };
 
   return {
-    phaseTitle: `Phase ${activePhase.id}: ${activePhase.title}`,
+    phaseId: activePhase.id,
+    phaseTitle: activePhase.title,
     blockName: activeBlock.name,
     window: activeBlock.window,
     goal: activeBlock.bullets[0] || activePhase.summary,

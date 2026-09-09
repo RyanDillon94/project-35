@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      coach_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      habit_days: {
+        Row: {
+          day: string
+          gym: boolean
+          protein: boolean
+          steps: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          gym?: boolean
+          protein?: boolean
+          steps?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          gym?: boolean
+          protein?: boolean
+          steps?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      progress_photos: {
+        Row: {
+          slot: string
+          storage_path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          slot: string
+          storage_path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          slot?: string
+          storage_path?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          hevy_api_key: string | null
+          latest_workout: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          hevy_api_key?: string | null
+          latest_workout?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          hevy_api_key?: string | null
+          latest_workout?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      weigh_ins: {
+        Row: {
+          created_at: string
+          entry_date: string
+          id: string
+          user_id: string
+          weight_lbs: number
+        }
+        Insert: {
+          created_at?: string
+          entry_date: string
+          id?: string
+          user_id: string
+          weight_lbs: number
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          id?: string
+          user_id?: string
+          weight_lbs?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -29,10 +29,12 @@ export type WeightEntry = { date: string; weight: number };
 
 export function WeightCard({
   entries,
-  setEntries,
+  onSave,
+  saving,
 }: {
   entries: WeightEntry[];
-  setEntries: React.Dispatch<React.SetStateAction<WeightEntry[]>>;
+  onSave: (entry: WeightEntry) => Promise<void>;
+  saving?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(lastFridayKey());
@@ -49,16 +51,20 @@ export function WeightCard({
     weight: e.weight,
   }));
 
-  const save = () => {
+  const save = async () => {
     const value = Number(weight);
     if (!Number.isFinite(value) || value < 80 || value > 500) {
       toast.error("Enter a weight between 80 and 500 lbs.");
       return;
     }
-    setEntries((prev) => [...prev.filter((e) => e.date !== date), { date, weight: value }]);
-    toast.success("Friday average logged.");
-    setWeight("");
-    setOpen(false);
+    try {
+      await onSave({ date, weight: value });
+      toast.success("Friday average logged.");
+      setWeight("");
+      setOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save entry.");
+    }
   };
 
   return (
@@ -108,7 +114,7 @@ export function WeightCard({
               )}
             </div>
             <DialogFooter>
-              <Button onClick={save} className="w-full sm:w-auto">
+              <Button onClick={() => void save()} disabled={saving} className="w-full sm:w-auto">
                 Save entry
               </Button>
             </DialogFooter>

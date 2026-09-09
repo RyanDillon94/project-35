@@ -1,30 +1,31 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { DAILY_TARGETS, todayKey } from "@/lib/project35";
-import { useLocalState } from "@/lib/use-local-state";
+import { useHabitDay, type HabitKey } from "@/lib/p35-cloud";
 import { Beef, Dumbbell, Footprints, Sunrise, Utensils } from "lucide-react";
+import { toast } from "sonner";
 
-type HabitState = Record<string, { gym: boolean; steps: boolean; protein: boolean }>;
-
-const HABITS = [
+const HABITS: Array<{ key: HabitKey; label: string }> = [
   { key: "gym", label: "6:00 AM Gym Session Completed" },
   { key: "steps", label: "12,500 Steps Hit" },
   { key: "protein", label: "200g+ Protein Banked" },
-] as const;
+];
 
-export function NonNegotiables() {
-  const [log, setLog] = useLocalState<HabitState>("p35.habits", {});
+export function NonNegotiables({ userId }: { userId: string | null }) {
   const day = todayKey();
-  const today = log[day] ?? { gym: false, steps: false, protein: false };
-  const done = HABITS.filter((h) => today[h.key]).length;
+  const { habits, toggle } = useHabitDay(userId, day);
+  const done = HABITS.filter((h) => habits[h.key]).length;
 
-  const toggle = (key: (typeof HABITS)[number]["key"]) =>
-    setLog((prev) => {
-      const current = prev[day] ?? { gym: false, steps: false, protein: false };
-      return { ...prev, [day]: { ...current, [key]: !current[key] } };
+  const onToggle = (key: HabitKey) =>
+    toggle.mutate(key, {
+      onError: (error) => toast.error(error instanceof Error ? error.message : "Could not save."),
     });
 
   const stats = [
-    { icon: Utensils, label: "Calories", value: `${DAILY_TARGETS.caloriesMin.toLocaleString()}\u2013${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal` },
+    {
+      icon: Utensils,
+      label: "Calories",
+      value: `${DAILY_TARGETS.caloriesMin.toLocaleString()}\u2013${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal`,
+    },
     { icon: Beef, label: "Protein", value: `${DAILY_TARGETS.protein}g+` },
     { icon: Footprints, label: "Steps", value: DAILY_TARGETS.steps.toLocaleString() },
     { icon: Sunrise, label: "Routine", value: DAILY_TARGETS.routine },
@@ -42,7 +43,10 @@ export function NonNegotiables() {
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         {stats.map((s) => (
-          <div key={s.label} className="flex items-center gap-3 rounded-lg border border-border bg-surface-2/60 p-3">
+          <div
+            key={s.label}
+            className="flex items-center gap-3 rounded-lg border border-border bg-surface-2/60 p-3"
+          >
             <s.icon className="size-4 shrink-0 text-primary" />
             <div className="min-w-0">
               <p className="stat-label">{s.label}</p>
@@ -59,8 +63,16 @@ export function NonNegotiables() {
             key={habit.key}
             className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-2/40 px-3 py-3 transition-colors active:bg-surface-2"
           >
-            <Checkbox checked={today[habit.key]} onCheckedChange={() => toggle(habit.key)} className="size-5" />
-            <span className={today[habit.key] ? "text-sm text-muted-foreground line-through" : "text-sm font-medium"}>
+            <Checkbox
+              checked={habits[habit.key]}
+              onCheckedChange={() => onToggle(habit.key)}
+              className="size-5"
+            />
+            <span
+              className={
+                habits[habit.key] ? "text-sm text-muted-foreground line-through" : "text-sm font-medium"
+              }
+            >
               {habit.label}
             </span>
           </label>

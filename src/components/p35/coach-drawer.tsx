@@ -10,7 +10,7 @@ import { useCoachMessages, type CoachMsg } from "@/lib/p35-cloud";
 import { Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = CoachMsg;
 
 function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));

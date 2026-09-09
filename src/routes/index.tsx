@@ -57,8 +57,8 @@ function Dashboard({ userId }: { userId: string }) {
       <PhotoCheckpoint userId={userId} />
       <Roadmap />
       <div className="flex flex-col items-center gap-2 pt-2">
-        <p className="text-center text-xs text-muted-foreground">
-          Standalone mode. Add to your home screen for a full-screen experience.
+        <p className="text-center text-xs italic tracking-wide text-muted-foreground/70">
+          &ldquo;Only cunts drink on weekdays... Don&apos;t be a cunt.&rdquo;
         </p>
       </div>
       <DataBackupCard />

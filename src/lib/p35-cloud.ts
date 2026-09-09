@@ -245,3 +245,73 @@ export function importDashboardBackup(file: File): Promise<boolean> {
     reader.readAsText(file);
   });
 }
+
+// 6. COACH MESSAGES HOOK
+export type CoachMsg = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export function useCoachMessages(userId: string | null) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-coach-msgs", userId || "local"];
+
+  const { data: messages = [] } = useQuery<CoachMsg[]>({
+    queryKey,
+    queryFn: () => getLocal<CoachMsg[]>("p35_coach_messages", []),
+    staleTime: Infinity,
+  });
+
+  const add = useMutation({
+    mutationFn: async (msg: CoachMsg) => {
+      const current = getLocal<CoachMsg[]>("p35_coach_messages", []);
+      const updated = [...current, msg];
+      setLocal("p35_coach_messages", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { messages, add };
+}
+
+// 7. FRIDAY WEIGH-IN AUTO BACKUP
+export async function triggerFridayBackup(date: string): Promise<void> {
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    weighIns: getLocal("p35_weigh_ins", []),
+    hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+    workout: getLocal("p35_cached_workout", null),
+    photos: getLocal("p35_photos", { baseline: null, current: null }),
+  };
+
+  const jsonStr = JSON.stringify(backup, null, 2);
+  const fileName = `p35-backup-${date}.json`;
+  const file = new File([jsonStr], fileName, { type: "application/json" });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: `Project 35 Backup (${date})`,
+        text: `Friday weigh-in backup for ${date}`,
+      });
+      return;
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
+    }
+  }
+
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

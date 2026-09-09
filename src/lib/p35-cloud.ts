@@ -11,12 +11,9 @@ export type UserSettings = {
   workout: HevyWorkout | null;
 };
 
-export type HabitDay = {
-  date: string;
-  gymCompleted: boolean;
-  stepsHit: boolean;
-  proteinBanked: boolean;
-};
+export type HabitKey = "gym" | "steps" | "protein";
+
+export type HabitsState = Record<HabitKey, boolean>;
 
 export type CheckpointPhoto = {
   id: string;
@@ -43,10 +40,42 @@ function setLocal<T>(key: string, value: T): void {
   }
 }
 
-// 1. WEIGH-INS HOOK
-export function useWeighIns(userId: string) {
+// 1. HABITS HOOK (Matches non-negotiables.tsx)
+export function useHabitDay(userId: string | null, dayKey: string) {
   const qc = useQueryClient();
-  const queryKey = ["p35-weigh-ins", userId];
+  const queryKey = ["p35-habits", userId || "local", dayKey];
+
+  const defaultHabits: HabitsState = {
+    gym: false,
+    steps: false,
+    protein: false,
+  };
+
+  const { data: habits = defaultHabits } = useQuery<HabitsState>({
+    queryKey,
+    queryFn: () => getLocal<HabitsState>(`p35_habits_${dayKey}`, defaultHabits),
+    staleTime: Infinity,
+  });
+
+  const toggle = useMutation({
+    mutationFn: async (key: HabitKey) => {
+      const current = getLocal<HabitsState>(`p35_habits_${dayKey}`, defaultHabits);
+      const updated = { ...current, [key]: !current[key] };
+      setLocal(`p35_habits_${dayKey}`, updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { habits, toggle };
+}
+
+// 2. WEIGH-INS HOOK
+export function useWeighIns(userId: string | null) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-weigh-ins", userId || "local"];
 
   const { data: entries = [] } = useQuery<WeightEntry[]>({
     queryKey,
@@ -76,18 +105,17 @@ export function useWeighIns(userId: string) {
   return { entries, save };
 }
 
-// 2. USER SETTINGS & HEVY WORKOUT HOOK
-export function useUserSettings(userId: string) {
+// 3. USER SETTINGS HOOK
+export function useUserSettings(userId: string | null) {
   const qc = useQueryClient();
-  const queryKey = ["p35-settings", userId];
+  const queryKey = ["p35-settings", userId || "local"];
 
   const { data = { hevyApiKey: "", workout: null } } = useQuery<UserSettings>({
     queryKey,
-    queryFn: () => {
-      const apiKey = localStorage.getItem("p35_hevy_api_key") || "";
-      const workout = getLocal<HevyWorkout | null>("p35_cached_workout", null);
-      return { hevyApiKey: apiKey, workout };
-    },
+    queryFn: () => ({
+      hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+      workout: getLocal<HevyWorkout | null>("p35_cached_workout", null),
+    }),
     staleTime: Infinity,
   });
 
@@ -99,11 +127,11 @@ export function useUserSettings(userId: string) {
       if (patch.workout !== undefined) {
         setLocal("p35_cached_workout", patch.workout);
       }
-      const current = getLocal<UserSettings>("p35-settings", {
+      return {
         hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
         workout: getLocal<HevyWorkout | null>("p35_cached_workout", null),
-      });
-      return { ...current, ...patch };
+        ...patch,
+      };
     },
     onSuccess: (updated) => {
       qc.setQueryData(queryKey, updated);
@@ -117,43 +145,10 @@ export function useUserSettings(userId: string) {
   };
 }
 
-// 3. DAILY NON-NEGOTIABLES / HABITS HOOK
-export function useHabits(userId: string, dateKey: string) {
+// 4. PHOTOS HOOK
+export function usePhotos(userId: string | null) {
   const qc = useQueryClient();
-  const queryKey = ["p35-habits", userId, dateKey];
-
-  const defaultDay: HabitDay = {
-    date: dateKey,
-    gymCompleted: false,
-    stepsHit: false,
-    proteinBanked: false,
-  };
-
-  const { data: day = defaultDay } = useQuery<HabitDay>({
-    queryKey,
-    queryFn: () => getLocal<HabitDay>(`p35_habits_${dateKey}`, defaultDay),
-    staleTime: Infinity,
-  });
-
-  const toggle = useMutation({
-    mutationFn: async (habitKey: keyof Omit<HabitDay, "date">) => {
-      const current = getLocal<HabitDay>(`p35_habits_${dateKey}`, defaultDay);
-      const updated = { ...current, [habitKey]: !current[habitKey] };
-      setLocal(`p35_habits_${dateKey}`, updated);
-      return updated;
-    },
-    onSuccess: (updated) => {
-      qc.setQueryData(queryKey, updated);
-    },
-  });
-
-  return { day, toggle };
-}
-
-// 4. PHOTO CHECKPOINTS HOOK
-export function usePhotos(userId: string) {
-  const qc = useQueryClient();
-  const queryKey = ["p35-photos", userId];
+  const queryKey = ["p35-photos", userId || "local"];
 
   const { data: photos = [] } = useQuery<CheckpointPhoto[]>({
     queryKey,
@@ -176,7 +171,7 @@ export function usePhotos(userId: string) {
   return { photos, savePhoto };
 }
 
-// 5. EXPORT / IMPORT BACKUP UTILITIES
+// 5. BACKUP EXPORT & IMPORT
 export function exportDashboardBackup() {
   const backup = {
     version: 1,

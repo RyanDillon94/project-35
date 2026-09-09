@@ -14,8 +14,16 @@ export type UserSettings = {
 export type HabitKey = string;
 export type HabitsState = Record<string, boolean>;
 
+export type PhotoAngle = "front" | "side" | "back";
 export type PhotoSlot = "baseline" | "current";
-export type PhotosState = Record<PhotoSlot, string | null>;
+export type AnglePhotos = Record<PhotoSlot, string | null>;
+export type PhotosState = Record<PhotoAngle, AnglePhotos>;
+
+export const DEFAULT_PHOTOS: PhotosState = {
+  front: { baseline: null, current: null },
+  side: { baseline: null, current: null },
+  back: { baseline: null, current: null },
+};
 
 export type CoachMsg = {
   role: "user" | "assistant";
@@ -74,6 +82,23 @@ function getAllLocalJournals(): Record<string, string> {
   return journals;
 }
 
+// Normalise photos from localStorage with backwards compatibility
+function getStoredPhotos(): PhotosState {
+  const stored = getLocal<any>("p35_photos", DEFAULT_PHOTOS);
+  if (stored && "baseline" in stored && !("front" in stored)) {
+    return {
+      front: { baseline: stored.baseline ?? null, current: stored.current ?? null },
+      side: { baseline: null, current: null },
+      back: { baseline: null, current: null },
+    };
+  }
+  return {
+    front: { ...DEFAULT_PHOTOS.front, ...(stored?.front || {}) },
+    side: { ...DEFAULT_PHOTOS.side, ...(stored?.side || {}) },
+    back: { ...DEFAULT_PHOTOS.back, ...(stored?.back || {}) },
+  };
+}
+
 // Build a complete snapshot of all dashboard state
 export function buildFullBackup() {
   return {
@@ -83,7 +108,7 @@ export function buildFullBackup() {
     hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
     geminiApiKey: localStorage.getItem("p35_gemini_api_key") || "",
     workout: getLocal("p35_cached_workout", null),
-    photos: getLocal("p35_photos", { baseline: null, current: null }),
+    photos: getStoredPhotos(),
     coachMessages: getLocal("p35_coach_messages", []),
     habits: getAllLocalHabits(),
     journals: getAllLocalJournals(),
@@ -226,27 +251,36 @@ export function useUserSettings(userId: string | null) {
   };
 }
 
-// 4. PHOTOS HOOK
+// 4. MULTI-ANGLE PHOTOS HOOK
 export function usePhotos(userId: string | null) {
   const qc = useQueryClient();
   const queryKey = ["p35-photos", userId || "local"];
 
-  const defaultPhotos: PhotosState = {
-    baseline: null,
-    current: null,
-  };
-
-  const { data: photos = defaultPhotos } = useQuery<PhotosState>({
+  const { data: photos = DEFAULT_PHOTOS } = useQuery<PhotosState>({
     queryKey,
-    queryFn: () => getLocal<PhotosState>("p35_photos", defaultPhotos),
+    queryFn: getStoredPhotos,
     staleTime: Infinity,
   });
 
   const upload = useMutation({
-    mutationFn: async ({ slot, file }: { slot: PhotoSlot; file: File }) => {
+    mutationFn: async ({
+      angle,
+      slot,
+      file,
+    }: {
+      angle: PhotoAngle;
+      slot: PhotoSlot;
+      file: File;
+    }) => {
       const dataUrl = await compressImage(file);
-      const current = getLocal<PhotosState>("p35_photos", defaultPhotos);
-      const updated = { ...current, [slot]: dataUrl };
+      const currentPhotos = getStoredPhotos();
+      const updated: PhotosState = {
+        ...currentPhotos,
+        [angle]: {
+          ...(currentPhotos[angle] || { baseline: null, current: null }),
+          [slot]: dataUrl,
+        },
+      };
       setLocal("p35_photos", updated);
       return updated;
     },
@@ -255,7 +289,25 @@ export function usePhotos(userId: string | null) {
     },
   });
 
-  return { photos, upload };
+  const removePhoto = useMutation({
+    mutationFn: async ({ angle, slot }: { angle: PhotoAngle; slot: PhotoSlot }) => {
+      const currentPhotos = getStoredPhotos();
+      const updated: PhotosState = {
+        ...currentPhotos,
+        [angle]: {
+          ...(currentPhotos[angle] || { baseline: null, current: null }),
+          [slot]: null,
+        },
+      };
+      setLocal("p35_photos", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { photos, upload, removePhoto };
 }
 
 // 5. BACKUP EXPORT & IMPORT UTILITIES
@@ -282,8 +334,20 @@ export function importDashboardBackup(file: File): Promise<boolean> {
         if (data.hevyApiKey) localStorage.setItem("p35_hevy_api_key", data.hevyApiKey);
         if (data.geminiApiKey) localStorage.setItem("p35_gemini_api_key", data.geminiApiKey);
         if (data.workout) setLocal("p35_cached_workout", data.workout);
-        if (data.photos) setLocal("p35_photos", data.photos);
         if (data.coachMessages) setLocal("p35_coach_messages", data.coachMessages);
+
+        // Restore photos (handling both multi-angle and legacy snapshots)
+        if (data.photos) {
+          if ("front" in data.photos) {
+            setLocal("p35_photos", data.photos);
+          } else if ("baseline" in data.photos) {
+            setLocal("p35_photos", {
+              front: { baseline: data.photos.baseline ?? null, current: data.photos.current ?? null },
+              side: { baseline: null, current: null },
+              back: { baseline: null, current: null },
+            });
+          }
+        }
 
         // Restore all habit states
         if (data.habits && typeof data.habits === "object") {

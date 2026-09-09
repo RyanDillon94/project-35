@@ -4,7 +4,7 @@ import { Calendar, Flame, ShieldHalf, Target } from "lucide-react";
 
 export function DashboardHeader() {
   const {
-    phaseTitle,
+    phaseId,
     blockName,
     goal,
     dateRange,
@@ -32,11 +32,11 @@ export function DashboardHeader() {
         Built over years. Ready for everything. Arrive at 35 in undeniable shape.
       </p>
 
-      {/* Phase Badge */}
+      {/* Clean Phase Badge: Phase 1 • Block 1: The Clock */}
       <div className="flex flex-wrap items-center gap-2">
         <Badge className="gap-1.5 bg-primary/15 text-primary hover:bg-primary/20">
           <Flame className="size-3.5" />
-          {phaseTitle} ({blockName})
+          Phase {phaseId} &bull; {blockName}
         </Badge>
       </div>
 

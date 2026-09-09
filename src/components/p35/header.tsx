@@ -1,9 +1,9 @@
 import { Badge } from "@/components/ui/badge";
-import { countdownTo, TARGET_DATE } from "@/lib/project35";
+import { ACTIVE_BLOCK, blockCountdown } from "@/lib/project35";
 import { CalendarClock, Flame, ShieldHalf } from "lucide-react";
 
 export function DashboardHeader() {
-  const { months, weeks, days } = countdownTo(TARGET_DATE);
+  const { weeksLeft, daysLeft, progress } = blockCountdown();
 
   return (
     <header className="panel glow-ring relative overflow-hidden p-5">
@@ -28,22 +28,39 @@ export function DashboardHeader() {
           <Flame className="size-3.5" />
           Phase 1: The Cut &amp; The Clock (Block 1: Weeks 1&ndash;12)
         </Badge>
+        <Badge
+          variant="outline"
+          className="gap-1.5 border-border text-muted-foreground"
+        >
+          <CalendarClock className="size-3.5" />
+          Target: November 2029 &mdash; Age 35
+        </Badge>
       </div>
 
       <div className="mt-5 grid grid-cols-3 gap-2">
         {[
-          { label: "Months left", value: months },
-          { label: "Weeks left", value: weeks },
-          { label: "Days left", value: days },
+          { label: "Weeks left", value: String(weeksLeft) },
+          { label: "Days left", value: String(daysLeft) },
+          { label: "Block progress", value: `${progress}%` },
         ].map((item) => (
-          <div key={item.label} className="rounded-lg border border-border bg-surface-2/60 p-3 text-center">
+          <div
+            key={item.label}
+            className="rounded-lg border border-border bg-surface-2/60 p-3 text-center"
+          >
             <p className="font-display text-2xl font-bold text-primary">{item.value}</p>
             <p className="stat-label mt-0.5">{item.label}</p>
           </div>
         ))}
       </div>
-      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-        <CalendarClock className="size-3.5" /> Target: November 2029 &mdash; Age 35
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-2">
+        <div
+          className="h-full rounded-full bg-primary transition-all"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+        <CalendarClock className="size-3.5" /> Target: {ACTIVE_BLOCK.label}
       </p>
     </header>
   );

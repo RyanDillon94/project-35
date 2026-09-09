@@ -34,7 +34,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 1,
     title: "The Cut & The Clock",
-    window: "Nov 2026 \u2013 Apr 2027",
+    window: "Sep 2026 \u2013 Feb 2027",
     status: "active",
     summary: "Establish the 6:00 AM habit and drop 30 lbs toward 190 lbs.",
     badges: ["Fat Loss", "Discipline"],
@@ -42,8 +42,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: The Clock",
         window: "Weeks 1\u201312",
-        start: "2026-11-02",
-        end: "2027-01-25",
+        start: "2026-09-07",
+        end: "2026-11-29",
         focus: ["Habit", "Deficit"],
         bullets: [
           "Non-negotiable 6:00 AM lift, seven days a week of showing up",
@@ -54,8 +54,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: The Cut Deepens",
         window: "Weeks 13\u201324",
-        start: "2027-01-26",
-        end: "2027-04-19",
+        start: "2026-11-30",
+        end: "2027-02-21",
         focus: ["Fat Loss", "Strength Retention"],
         bullets: [
           "Hold strength on the big four while the deficit continues",
@@ -205,6 +205,28 @@ export const PHASES: PhaseDef[] = [
 
 export function daysBetween(from: Date, to: Date) {
   return Math.ceil((to.getTime() - from.getTime()) / 86_400_000);
+}
+
+/** Phase 1 / Block 1 — the active 12-week cut. */
+export const ACTIVE_BLOCK = {
+  label: "End of Block 1 (12-Week Cut)",
+  start: new Date(`${PHASES[0]!.blocks[0]!.start}T00:00:00Z`),
+  end: new Date(`${PHASES[0]!.blocks[0]!.end}T23:59:59Z`),
+};
+
+export function blockCountdown(
+  start = ACTIVE_BLOCK.start,
+  end = ACTIVE_BLOCK.end,
+  now = new Date(),
+) {
+  const total = Math.max(1, daysBetween(start, end));
+  const daysLeft = Math.max(0, daysBetween(now, end));
+  const elapsed = Math.min(total, Math.max(0, total - daysLeft));
+  return {
+    daysLeft,
+    weeksLeft: Math.ceil(daysLeft / 7),
+    progress: Math.min(100, Math.max(0, Math.round((elapsed / total) * 100))),
+  };
 }
 
 export function countdownTo(target: Date, now = new Date()) {

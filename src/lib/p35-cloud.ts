@@ -11,8 +11,8 @@ export type UserSettings = {
   workout: HevyWorkout | null;
 };
 
-export type HabitKey = "gym" | "steps" | "protein";
-export type HabitsState = Record<HabitKey, boolean>;
+export type HabitKey = string;
+export type HabitsState = Record<string, boolean>;
 
 export type PhotoSlot = "baseline" | "current";
 export type PhotosState = Record<PhotoSlot, string | null>;
@@ -48,13 +48,30 @@ function getAllLocalHabits(): Record<string, HabitsState> {
       const key = localStorage.key(i);
       if (key && key.startsWith("p35_habits_")) {
         const day = key.replace("p35_habits_", "");
-        habits[day] = getLocal<HabitsState>(key, { gym: false, steps: false, protein: false });
+        habits[day] = getLocal<HabitsState>(key, {});
       }
     }
   } catch (err) {
     console.error("Failed to read habits from localStorage:", err);
   }
   return habits;
+}
+
+// Helper to pull all daily journal entries across all dates
+function getAllLocalJournals(): Record<string, string> {
+  const journals: Record<string, string> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("p35_journal_")) {
+        const day = key.replace("p35_journal_", "");
+        journals[day] = localStorage.getItem(key) || "";
+      }
+    }
+  } catch (err) {
+    console.error("Failed to read journals from localStorage:", err);
+  }
+  return journals;
 }
 
 // Build a complete snapshot of all dashboard state
@@ -69,6 +86,7 @@ export function buildFullBackup() {
     photos: getLocal("p35_photos", { baseline: null, current: null }),
     coachMessages: getLocal("p35_coach_messages", []),
     habits: getAllLocalHabits(),
+    journals: getAllLocalJournals(),
   };
 }
 
@@ -112,11 +130,7 @@ export function useHabitDay(userId: string | null, dayKey: string) {
   const qc = useQueryClient();
   const queryKey = ["p35-habits", userId || "local", dayKey];
 
-  const defaultHabits: HabitsState = {
-    gym: false,
-    steps: false,
-    protein: false,
-  };
+  const defaultHabits: HabitsState = {};
 
   const { data: habits = defaultHabits } = useQuery<HabitsState>({
     queryKey,
@@ -277,6 +291,14 @@ export function importDashboardBackup(file: File): Promise<boolean> {
             setLocal(`p35_habits_${dayKey}`, state);
           }
         }
+
+        // Restore all daily journal entries
+        if (data.journals && typeof data.journals === "object") {
+          for (const [dayKey, text] of Object.entries(data.journals)) {
+            localStorage.setItem(`p35_journal_${dayKey}`, String(text));
+          }
+        }
+
         resolve(true);
       } catch {
         resolve(false);

@@ -132,7 +132,7 @@ export function HevyCard({
                   <li key={`${ex.title}-${i}`} className="flex items-baseline justify-between gap-3 text-sm">
                     <span className="min-w-0 truncate font-medium">{ex.title}</span>
                     <span className="shrink-0 font-display text-primary">
-                      {ex.sets.length} \u00d7 {top?.weightKg ? `${top.weightKg} kg` : "BW"}
+                      {ex.sets.length} &times; {top?.weightKg ? `${top.weightKg} kg` : "BW"}
                       {top?.reps ? ` \u00b7 ${top.reps} reps` : ""}
                     </span>
                   </li>

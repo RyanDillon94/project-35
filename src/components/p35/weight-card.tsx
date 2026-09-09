@@ -22,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { GOAL_WEIGHT, lastFridayKey } from "@/lib/project35";
+import { triggerFridayBackup } from "@/lib/p35-cloud";
 import { Plus, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,7 +79,6 @@ export function WeightCard({
 
     try {
       const newEntry: WeightEntry = { date, weight: value };
-      // Update existing date or append new entry
       const existingIndex = localEntries.findIndex((e) => e.date === date);
       let updated: WeightEntry[];
       if (existingIndex >= 0) {
@@ -98,6 +98,9 @@ export function WeightCard({
       toast.success("Friday average saved locally.");
       setWeight("");
       setOpen(false);
+
+      // Triggers native mobile share sheet (Google Drive, Files, etc.) or auto-download
+      await triggerFridayBackup(date);
     } catch {
       toast.error("Could not save entry.");
     }

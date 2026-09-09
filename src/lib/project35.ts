@@ -34,7 +34,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 1,
     title: "The Cut & The Clock",
-    window: "Nov 2026 \u2013 Apr 2027",
+    window: "Sep 2026 \u2013 Feb 2027",
     status: "active",
     summary: "Establish the 6:00 AM habit and drop 30 lbs toward 190 lbs.",
     badges: ["Fat Loss", "Discipline"],
@@ -42,8 +42,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: The Clock",
         window: "Weeks 1\u201312",
-        start: "2026-11-02",
-        end: "2027-01-25",
+        start: "2026-09-07",
+        end: "2026-11-29",
         focus: ["Habit", "Deficit"],
         bullets: [
           "Non-negotiable 6:00 AM lift, seven days a week of showing up",
@@ -54,8 +54,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: The Cut Deepens",
         window: "Weeks 13\u201324",
-        start: "2027-01-26",
-        end: "2027-04-19",
+        start: "2026-11-30",
+        end: "2027-02-21",
         focus: ["Fat Loss", "Strength Retention"],
         bullets: [
           "Hold strength on the big four while the deficit continues",

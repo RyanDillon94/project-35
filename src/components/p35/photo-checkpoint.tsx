@@ -17,7 +17,7 @@ import {
   ImagePlus,
   Loader2,
   Maximize2,
-  PlusCircle,
+  RotateCcw,
   Trash2,
   X,
 } from "lucide-react";
@@ -35,15 +35,12 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveAngle, setArchiveAngle] = useState<PhotoAngle>("front");
 
-  // TEST SIMULATOR TOGGLE
-  const [simulateFinalWeek, setSimulateFinalWeek] = useState(false);
-
   const { photos, archive = [], upload, removePhoto, closeAndArchiveBlock } = usePhotos(userId);
   const pending = useRef<PhotoSlot>("baseline");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { currentWeek, totalWeeks, blockName, phaseTitle } = getActiveBlockCountdown();
-  const isFinalWeek = currentWeek >= totalWeeks || simulateFinalWeek;
+  const isFinalWeek = currentWeek >= totalWeeks;
 
   const activeAnglePhotos = photos?.[selectedAngle] || { baseline: null, current: null };
 
@@ -89,11 +86,16 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
       {
         onSuccess: () => {
           toast.success("Block closed! Baseline populated for next block.");
-          setSimulateFinalWeek(false);
         },
         onError: () => toast.error("Could not archive block photos."),
       },
     );
+  };
+
+  const handlePurgeAllPhotos = () => {
+    localStorage.removeItem("p35_photos");
+    localStorage.removeItem("p35_archived_photos");
+    window.location.reload();
   };
 
   const slots: Array<{ slot: PhotoSlot; label: string; sublabel: string }> = [
@@ -103,7 +105,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
 
   return (
     <section className="panel p-5 space-y-4">
-      {/* Header with Angle Tabs, Test Button & Archive Button */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Camera className="size-5 text-primary" />
@@ -112,23 +114,26 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick Test Simulator Button */}
+          {/* Temporary Wipe Button */}
           <button
             type="button"
-            onClick={() => setSimulateFinalWeek((v) => !v)}
-            className="rounded-md border border-dashed border-primary/50 bg-primary/5 px-2 py-1 text-[11px] font-mono text-primary hover:bg-primary/10"
+            onClick={handlePurgeAllPhotos}
+            className="flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/20 active:bg-destructive/30"
           >
-            {simulateFinalWeek ? "Exit Test" : "Test Closeout"}
+            <RotateCcw className="size-3" />
+            Reset All Photos
           </button>
 
-          <button
-            type="button"
-            onClick={() => setArchiveOpen(true)}
-            className="flex items-center gap-1 rounded-md border border-border bg-surface-2/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <FolderArchive className="size-3.5 text-primary" />
-            Archive ({archive?.length ?? 0})
-          </button>
+          {(archive?.length ?? 0) > 0 && (
+            <button
+              type="button"
+              onClick={() => setArchiveOpen(true)}
+              className="flex items-center gap-1 rounded-md border border-border bg-surface-2/40 px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <FolderArchive className="size-3.5 text-primary" />
+              Archive ({archive.length})
+            </button>
+          )}
 
           {/* Tab Pills */}
           <div className="flex rounded-lg border border-border bg-surface-2/60 p-1">
@@ -263,6 +268,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
         }}
       />
 
+      {/* Fullscreen Single Photo Modal */}
       {modalImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
@@ -291,6 +297,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
         </div>
       )}
 
+      {/* Historical Archive Gallery Modal */}
       {archiveOpen && (
         <ArchiveModal
           archive={archive}
@@ -315,55 +322,6 @@ function ArchiveModal({
   onClose: () => void;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
-  const [mockList, setMockList] = useState<ArchivedBlockPhotos[] | null>(null);
-
-  const displayArchive = mockList ?? archive;
-
-  const injectMock2YearData = () => {
-    const sampleImg =
-      "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400"><rect fill="#18232c" width="300" height="400"/><text fill="#10b981" font-family="sans-serif" font-size="20" font-weight="bold" x="50%" y="50%" text-anchor="middle">Standard P35</text></svg>`,
-      );
-
-    const mocks: ArchivedBlockPhotos[] = [
-      {
-        blockId: "mock-1",
-        blockName: "Phase 1 • Block 1: The Clock",
-        dateClosed: "2026-11-29",
-        front: { baseline: sampleImg, final: sampleImg },
-        side: { baseline: sampleImg, final: sampleImg },
-        back: { baseline: sampleImg, final: sampleImg },
-      },
-      {
-        blockId: "mock-2",
-        blockName: "Phase 1 • Block 2: The Cut",
-        dateClosed: "2027-02-21",
-        front: { baseline: sampleImg, final: sampleImg },
-        side: { baseline: sampleImg, final: sampleImg },
-        back: { baseline: sampleImg, final: sampleImg },
-      },
-      {
-        blockId: "mock-3",
-        blockName: "Phase 2 • Block 1: Reverse Diet",
-        dateClosed: "2027-07-12",
-        front: { baseline: sampleImg, final: sampleImg },
-        side: { baseline: sampleImg, final: sampleImg },
-        back: { baseline: sampleImg, final: sampleImg },
-      },
-      {
-        blockId: "mock-4",
-        blockName: "Phase 2 • Block 2: Heavy Accumulation",
-        dateClosed: "2027-10-04",
-        front: { baseline: sampleImg, final: sampleImg },
-        side: { baseline: sampleImg, final: sampleImg },
-        back: { baseline: sampleImg, final: sampleImg },
-      },
-    ];
-
-    setMockList(mocks);
-    toast.success("Loaded 4 mock historical blocks.");
-  };
 
   return (
     <div
@@ -379,25 +337,13 @@ function ArchiveModal({
             <FolderArchive className="size-4 text-primary" />
             <h3 className="text-sm font-bold">Historical Block Archive</h3>
           </div>
-          <div className="flex items-center gap-2">
-            {!mockList && (
-              <button
-                type="button"
-                onClick={injectMock2YearData}
-                className="flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary hover:bg-primary/20"
-              >
-                <PlusCircle className="size-3" />
-                Mock 2 Yrs Data
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-1 text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
         </div>
 
         <div className="flex items-center justify-center gap-1 border-b border-border/60 bg-surface-2/30 p-2">
@@ -418,12 +364,12 @@ function ArchiveModal({
         </div>
 
         <div className="overflow-y-auto p-4 space-y-3">
-          {displayArchive.length === 0 ? (
+          {archive.length === 0 ? (
             <p className="py-8 text-center text-xs text-muted-foreground">
-              No archived blocks yet. Click &quot;Mock 2 Yrs Data&quot; above to preview.
+              No archived blocks yet.
             </p>
           ) : (
-            displayArchive.map((record, idx) => {
+            archive.map((record, idx) => {
               const angleData = record[angle] || { baseline: null, final: null };
               const isOpen = openIndex === idx;
 

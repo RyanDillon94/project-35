@@ -1,3 +1,5 @@
+import { getCurrentDate } from '../utils/dateUtils';
+
 export const TARGET_DATE = new Date("2029-11-01T00:00:00Z");
 
 export const DAILY_TARGETS = {
@@ -252,7 +254,7 @@ export function daysBetween(from: Date, to: Date) {
 
 export const LONG_TERM_TARGET = "Target: November 2029 — Age 35";
 
-export function getActiveBlockDetails(now = new Date()) {
+export function getActiveBlockDetails(now = getCurrentDate()) {
   const nowMs = now.getTime();
 
   let activePhase = PHASES[0];
@@ -280,7 +282,7 @@ export function getActiveBlockDetails(now = new Date()) {
   return { activePhase, activeBlock };
 }
 
-export function getActiveHabits(now = new Date()): HabitDefinition[] {
+export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
   const isWeekend = now.getDay() === 0 || now.getDay() === 6;
   const { activeBlock } = getActiveBlockDetails(now);
 
@@ -308,7 +310,7 @@ export function getActiveHabits(now = new Date()): HabitDefinition[] {
   return [morningHabit, ...blockSpecificHabits, proteinHabit, caloriesHabit];
 }
 
-export function getActiveBlockCountdown(now = new Date()) {
+export function getActiveBlockCountdown(now = getCurrentDate()) {
   const { activePhase, activeBlock } = getActiveBlockDetails(now);
 
   const start = new Date(`${activeBlock.start}T00:00:00Z`);
@@ -347,7 +349,7 @@ export function getActiveBlockCountdown(now = new Date()) {
   };
 }
 
-export function countdownTo(target: Date, now = new Date()) {
+export function countdownTo(target: Date, now = getCurrentDate()) {
   const days = Math.max(0, daysBetween(now, target));
   return {
     days,
@@ -356,11 +358,11 @@ export function countdownTo(target: Date, now = new Date()) {
   };
 }
 
-export function todayKey(now = new Date()) {
+export function todayKey(now = getCurrentDate()) {
   return now.toISOString().slice(0, 10);
 }
 
-export function lastFridayKey(now = new Date()) {
+export function lastFridayKey(now = getCurrentDate()) {
   const d = new Date(now);
   const diff = (d.getUTCDay() + 2) % 7;
   d.setUTCDate(d.getUTCDate() - diff);

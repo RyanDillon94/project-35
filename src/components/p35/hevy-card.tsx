@@ -118,19 +118,32 @@ export function HevyCard({
             </p>
           </div>
           <div className="space-y-2">
-            {workout.exercises.map((ex, i) => (
-              <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="truncate text-sm font-semibold">{ex.title}</p>
-                  <span className="stat-label shrink-0">{ex.sets.length} sets</span>
+            {workout.exercises.map((ex, i) => {
+              const lastSet = ex.sets[ex.sets.length - 1];
+              return (
+                <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-sm font-semibold">{ex.title}</p>
+                    <span className="stat-label shrink-0">{ex.sets.length} sets</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {ex.sets
+                      .map((s) => `${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`)
+                      .join("  \u00b7  ")}
+                  </p>
+                  {lastSet?.rpe != null && (
+                    <p className="mt-1.5 text-xs font-medium text-primary">
+                      Final set RPE: {lastSet.rpe}
+                    </p>
+                  )}
+                  {ex.notes && (
+                    <p className="mt-1 text-xs text-muted-foreground italic">
+                      &ldquo;{ex.notes}&rdquo;
+                    </p>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {ex.sets
-                    .map((s) => `${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`)
-                    .join("  \u00b7  ")}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (

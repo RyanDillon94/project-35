@@ -25,12 +25,16 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   if (workout) {
     lines.push(
       `Latest Hevy workout: "${workout.title}" on ${workout.startTime ?? "unknown date"}.`,
-      ...workout.exercises.map(
-        (ex) =>
-          `- ${ex.title}: ${ex.sets
-            .map((s) => `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}`)
-            .join(", ")}`,
-      ),
+      ...workout.exercises.map((ex) => {
+        const lastSet = ex.sets[ex.sets.length - 1];
+        const setStr = ex.sets
+          .map((s) => `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}${s.rpe != null ? ` @RPE${s.rpe}` : ""}`)
+          .join(", ");
+        const rpeStr = lastSet?.rpe != null ? ` | Final set RPE: ${lastSet.rpe}` : "";
+        const notesStr = ex.notes ? ` | Notes: "${ex.notes}"` : "";
+        const setNotesStr = lastSet?.notes ? ` | Set notes: "${lastSet.notes}"` : "";
+        return `- ${ex.title}: ${setStr}${rpeStr}${notesStr}${setNotesStr}`;
+      }),
     );
   } else {
     lines.push("No Hevy workout synced yet.");

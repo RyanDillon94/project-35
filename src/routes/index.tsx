@@ -77,18 +77,18 @@ function Dashboard({ userId }: { userId: string }) {
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
       <DashboardHeader />
       <NonNegotiables userId={userId} />
-      <PhotoCheckpoint userId={userId} />
-      <WeightCard
-        entries={entries}
-        saving={save.isPending}
-        onSave={(entry) => save.mutateAsync(entry)}
-      />
       <HevyCard
         workout={workout}
         apiKey={hevyApiKey}
         onSaveKey={(key) => update.mutateAsync({ hevyApiKey: key })}
         onWorkout={(next) => update.mutateAsync({ workout: next })}
       />
+      <WeightCard
+        entries={entries}
+        saving={save.isPending}
+        onSave={(entry) => save.mutateAsync(entry)}
+      />
+      <PhotoCheckpoint userId={userId} />
       <Roadmap />
       <div className="flex flex-col items-center gap-2 pt-2">
         <p className="text-center text-xs text-muted-foreground">

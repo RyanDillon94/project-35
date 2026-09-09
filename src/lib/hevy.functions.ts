@@ -3,8 +3,14 @@ import { z } from "zod";
 
 const Input = z.object({ apiKey: z.string().min(4) });
 
-export type HevySet = { weightKg: number | null; reps: number | null; type?: string | undefined };
-export type HevyExercise = { title: string; sets: HevySet[] };
+export type HevySet = {
+  weightKg: number | null;
+  reps: number | null;
+  type?: string | undefined;
+  rpe?: number | null;
+  notes?: string | null;
+};
+export type HevyExercise = { title: string; notes?: string | null; sets: HevySet[] };
 export type HevyWorkout = {
   id: string;
   title: string;
@@ -35,7 +41,14 @@ export const fetchLatestHevyWorkout = createServerFn({ method: "POST" })
         end_time?: string;
         exercises?: Array<{
           title?: string;
-          sets?: Array<{ weight_kg?: number | null; reps?: number | null; type?: string }>;
+          notes?: string | null;
+          sets?: Array<{
+            weight_kg?: number | null;
+            reps?: number | null;
+            type?: string;
+            rpe?: number | null;
+            notes?: string | null;
+          }>;
         }>;
       }>;
     };
@@ -51,10 +64,13 @@ export const fetchLatestHevyWorkout = createServerFn({ method: "POST" })
         endTime: raw.end_time ?? null,
         exercises: (raw.exercises ?? []).map((ex) => ({
           title: ex.title ?? "Exercise",
+          notes: ex.notes ?? null,
           sets: (ex.sets ?? []).map((s) => ({
             weightKg: s.weight_kg ?? null,
             reps: s.reps ?? null,
             type: s.type,
+            rpe: s.rpe ?? null,
+            notes: s.notes ?? null,
           })),
         })),
       },

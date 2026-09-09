@@ -16,45 +16,70 @@ import { Activity, Loader2, RefreshCw, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 export function HevyCard({
-  workout,
-  apiKey,
+  workout: initialWorkout,
+  apiKey: initialApiKey,
   onSaveKey,
   onWorkout,
 }: {
   workout: HevyWorkout | null;
   apiKey: string;
-  onSaveKey: (key: string) => Promise<void>;
-  onWorkout: (workout: HevyWorkout) => Promise<void>;
+  onSaveKey?: (key: string) => Promise<void>;
+  onWorkout?: (workout: HevyWorkout) => Promise<void>;
 }) {
-  const [draftKey, setDraftKey] = useState(apiKey);
+  const [activeKey, setActiveKey] = useState(() => {
+    return localStorage.getItem("p35_hevy_api_key") || initialApiKey || "";
+  });
+  const [draftKey, setDraftKey] = useState(activeKey);
+  const [currentWorkout, setCurrentWorkout] = useState<HevyWorkout | null>(() => {
+    const cached = localStorage.getItem("p35_cached_workout");
+    return cached ? JSON.parse(cached) : initialWorkout;
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => setDraftKey(apiKey), [apiKey]);
+  useEffect(() => {
+    if (initialApiKey && !activeKey) {
+      setActiveKey(initialApiKey);
+      setDraftKey(initialApiKey);
+    }
+  }, [initialApiKey]);
 
   const saveKey = async (value: string) => {
     try {
-      await onSaveKey(value);
-      toast.success(value ? "Hevy key saved to your account." : "Key removed.");
+      const cleanKey = value.trim();
+      localStorage.setItem("p35_hevy_api_key", cleanKey);
+      setActiveKey(cleanKey);
+      
+      // Attempt cloud update in background if available, but never block
+      if (onSaveKey) {
+        onSaveKey(cleanKey).catch(() => {});
+      }
+
+      toast.success(cleanKey ? "Hevy key saved locally." : "Key removed.");
       setSettingsOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save key.");
+    } catch {
+      toast.error("Could not save key to device storage.");
     }
   };
 
   const sync = async () => {
-    if (!apiKey) {
+    const keyToUse = activeKey.trim();
+    if (!keyToUse) {
       setSettingsOpen(true);
       toast.error("Add your Hevy API key first.");
       return;
     }
     setLoading(true);
     try {
-      const result = await fetchLatestHevyWorkout({ data: { apiKey } });
+      const result = await fetchLatestHevyWorkout({ data: { apiKey: keyToUse } });
       if (!result.workout) {
         toast.error("No workouts found on that Hevy account.");
       } else {
-        await onWorkout(result.workout);
+        setCurrentWorkout(result.workout);
+        localStorage.setItem("p35_cached_workout", JSON.stringify(result.workout));
+        if (onWorkout) {
+          onWorkout(result.workout).catch(() => {});
+        }
         toast.success("Latest Hevy workout synced.");
       }
     } catch (error) {
@@ -63,6 +88,8 @@ export function HevyCard({
       setLoading(false);
     }
   };
+
+  const displayWorkout = currentWorkout || initialWorkout;
 
   return (
     <section className="panel p-5">
@@ -81,8 +108,7 @@ export function HevyCard({
             <DialogHeader>
               <DialogTitle>Hevy API Key</DialogTitle>
               <DialogDescription>
-                Saved privately to your account, so it works on every device. Get a key from the Hevy
-                developer settings.
+                Saved privately to your phone's browser. Get your key from the Hevy developer settings.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -97,28 +123,28 @@ export function HevyCard({
               />
             </div>
             <DialogFooter className="gap-2">
-              {apiKey && (
+              {activeKey && (
                 <Button variant="ghost" onClick={() => void saveKey("")}>
                   Remove key
                 </Button>
               )}
-              <Button onClick={() => void saveKey(draftKey.trim())}>Save key</Button>
+              <Button onClick={() => void saveKey(draftKey)}>Save key</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {workout ? (
+      {displayWorkout ? (
         <div className="mt-4 space-y-3">
           <div className="rounded-lg border border-border bg-surface-2/60 p-3">
             <p className="stat-label">Latest completed workout</p>
-            <p className="text-sm font-semibold">{workout.title}</p>
+            <p className="text-sm font-semibold">{displayWorkout.title}</p>
             <p className="text-xs text-muted-foreground">
-              {workout.startTime ? new Date(workout.startTime).toLocaleString() : "Date unknown"}
+              {displayWorkout.startTime ? new Date(displayWorkout.startTime).toLocaleString() : "Date unknown"}
             </p>
           </div>
           <div className="space-y-2">
-            {workout.exercises.map((ex, i) => {
+            {displayWorkout.exercises.map((ex, i) => {
               const lastSet = ex.sets[ex.sets.length - 1];
               return (
                 <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">

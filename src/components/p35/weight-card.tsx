@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -27,20 +27,38 @@ import { toast } from "sonner";
 
 export type WeightEntry = { date: string; weight: number };
 
+const STORAGE_KEY = "p35_weigh_ins";
+
 export function WeightCard({
-  entries,
+  entries: propEntries = [],
   onSave,
-  saving,
 }: {
-  entries: WeightEntry[];
-  onSave: (entry: WeightEntry) => Promise<void>;
+  entries?: WeightEntry[];
+  onSave?: (entry: WeightEntry) => Promise<void>;
   saving?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(lastFridayKey());
   const [weight, setWeight] = useState("");
+  const [localEntries, setLocalEntries] = useState<WeightEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : propEntries;
+    } catch {
+      return propEntries;
+    }
+  });
 
-  const sorted = useMemo(() => [...entries].sort((a, b) => a.date.localeCompare(b.date)), [entries]);
+  useEffect(() => {
+    if (propEntries && propEntries.length > 0 && localEntries.length === 0) {
+      setLocalEntries(propEntries);
+    }
+  }, [propEntries]);
+
+  const sorted = useMemo(
+    () => [...localEntries].sort((a, b) => a.date.localeCompare(b.date)),
+    [localEntries]
+  );
   const first = sorted[0]?.weight;
   const latest = sorted[sorted.length - 1]?.weight;
   const dropped = first != null && latest != null ? +(first - latest).toFixed(1) : 0;
@@ -57,13 +75,31 @@ export function WeightCard({
       toast.error("Enter a weight between 80 and 500 lbs.");
       return;
     }
+
     try {
-      await onSave({ date, weight: value });
-      toast.success("Friday average logged.");
+      const newEntry: WeightEntry = { date, weight: value };
+      // Update existing date or append new entry
+      const existingIndex = localEntries.findIndex((e) => e.date === date);
+      let updated: WeightEntry[];
+      if (existingIndex >= 0) {
+        updated = [...localEntries];
+        updated[existingIndex] = newEntry;
+      } else {
+        updated = [...localEntries, newEntry];
+      }
+
+      setLocalEntries(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+      if (onSave) {
+        onSave(newEntry).catch(() => {});
+      }
+
+      toast.success("Friday average saved locally.");
       setWeight("");
       setOpen(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not save entry.");
+    } catch {
+      toast.error("Could not save entry.");
     }
   };
 
@@ -90,7 +126,12 @@ export function WeightCard({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="friday-date">Friday date</Label>
-                <Input id="friday-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <Input
+                  id="friday-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="friday-weight">Weekly average (lbs)</Label>
@@ -114,7 +155,7 @@ export function WeightCard({
               )}
             </div>
             <DialogFooter>
-              <Button onClick={() => void save()} disabled={saving} className="w-full sm:w-auto">
+              <Button onClick={() => void save()} className="w-full sm:w-auto">
                 Save entry
               </Button>
             </DialogFooter>
@@ -124,11 +165,14 @@ export function WeightCard({
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         {[
-          { label: "Current", value: latest != null ? `${latest} lb` : "\u2014" },
-          { label: "Dropped", value: dropped ? `${dropped} lb` : "\u2014" },
-          { label: "To goal", value: toGoal != null ? `${Math.max(0, toGoal)} lb` : "\u2014" },
+          { label: "Current", value: latest != null ? `${latest} lb` : "—" },
+          { label: "Dropped", value: dropped ? `${dropped} lb` : "—" },
+          { label: "To goal", value: toGoal != null ? `${Math.max(0, toGoal)} lb` : "—" },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg border border-border bg-surface-2/60 p-3 text-center">
+          <div
+            key={s.label}
+            className="rounded-lg border border-border bg-surface-2/60 p-3 text-center"
+          >
             <p className="font-display text-lg font-bold text-primary">{s.value}</p>
             <p className="stat-label">{s.label}</p>
           </div>
@@ -144,7 +188,12 @@ export function WeightCard({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
               <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis
                 domain={[GOAL_WEIGHT - 6, "auto"]}
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
@@ -163,7 +212,12 @@ export function WeightCard({
                 y={GOAL_WEIGHT}
                 stroke="var(--gold)"
                 strokeDasharray="5 4"
-                label={{ value: `Goal ${GOAL_WEIGHT}`, fill: "var(--gold)", fontSize: 11, position: "insideTopRight" }}
+                label={{
+                  value: `Goal ${GOAL_WEIGHT}`,
+                  fill: "var(--gold)",
+                  fontSize: 11,
+                  position: "insideTopRight",
+                }}
               />
               <Line
                 type="monotone"

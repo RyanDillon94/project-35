@@ -1,372 +1,474 @@
-export const TARGET_DATE = new Date("2029-11-01T00:00:00Z");
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { HevyWorkout } from "./hevy.functions";
 
-export const DAILY_TARGETS = {
-  caloriesMin: 2000,
-  caloriesMax: 2400,
-  protein: 200,
-  steps: 12500,
-  routine: "6:00 AM Iron → 7:00 AM Dog Walk",
+export type WeightEntry = {
+  date: string;
+  weight: number;
 };
 
-export const GOAL_WEIGHT = 190;
-export const START_WEIGHT = 220;
-
-export type HabitDefinition = {
-  key: string;
-  label: string;
-  sublabel: string;
+export type UserSettings = {
+  hevyApiKey: string;
+  workout: HevyWorkout | null;
 };
 
-export type BlockDef = {
-  name: string;
-  window: string;
-  start: string;
-  end: string;
-  focus: string[];
-  bullets: string[];
-  blockHabits?: HabitDefinition[];
+export type HabitKey = string;
+export type HabitsState = Record<string, boolean>;
+
+export type PhotoAngle = "front" | "side" | "back";
+export type PhotoSlot = "baseline" | "current";
+export type AnglePhotos = Record<PhotoSlot, string | null>;
+export type PhotosState = Record<PhotoAngle, AnglePhotos>;
+
+export type ArchivedBlockPhotos = {
+  blockId: string;
+  blockName: string;
+  dateClosed: string;
+  front: { baseline: string | null; final: string | null };
+  side: { baseline: string | null; final: string | null };
+  back: { baseline: string | null; final: string | null };
 };
 
-export type PhaseDef = {
-  id: number;
-  title: string;
-  window: string;
-  status: "active" | "upcoming";
-  summary: string;
-  badges: string[];
-  blocks: BlockDef[];
+export const DEFAULT_PHOTOS: PhotosState = {
+  front: { baseline: null, current: null },
+  side: { baseline: null, current: null },
+  back: { baseline: null, current: null },
 };
 
-export const PHASES: PhaseDef[] = [
-  {
-    id: 1,
-    title: "The Clock & The Cut",
-    window: "Sep 2026 – Feb 2027",
-    status: "active",
-    summary: "Establish the 6:00 AM habit and drop 30 lbs toward 190 lbs.",
-    badges: ["Fat Loss", "Discipline"],
-    blocks: [
-      {
-        name: "Block 1: The Clock",
-        window: "Weeks 1–12",
-        start: "2026-09-07",
-        end: "2026-11-29",
-        focus: ["Habit", "Deficit"],
-        bullets: [
-          "Non-negotiable 6:00 AM lift, five days a week of showing up",
-          "2,000–2,400 kcal, 200g+ protein, 12,500 steps daily",
-          "Friday weekly average weight is the only scale number that counts",
-        ],
-        blockHabits: [
-          { key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Activity Base" },
-        ],
-      },
-      {
-        name: "Block 2: The Cut",
-        window: "Weeks 13–24",
-        start: "2026-11-30",
-        end: "2027-02-21",
-        focus: ["Fat Loss", "Strength Retention"],
-        bullets: [
-          "Hold strength on the big four while the deficit continues",
-          "Add one conditioning finisher twice per week",
-          "Land at or under 190 lbs by the end of the block",
-        ],
-        blockHabits: [
-          { key: "finisher", label: "Conditioning Finisher Completed", sublabel: "2x Weekly Finisher" },
-        ],
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: "The Foundation Build",
-    window: "May 2027 – Oct 2027",
-    status: "upcoming",
-    summary: "Lean bulk with heavy compound hypertrophy.",
-    badges: ["Hypertrophy", "Strength"],
-    blocks: [
-      {
-        name: "Block 1: Reverse Diet",
-        window: "Weeks 1–12",
-        start: "2027-04-20",
-        end: "2027-07-12",
-        focus: ["Hypertrophy"],
-        bullets: [
-          "Calories back to maintenance, then a slow surplus",
-          "Compound volume up: squat, bench, deadlift, press",
-        ],
-        blockHabits: [
-          { key: "volume", label: "Compound Volume Target Met", sublabel: "Hypertrophy Standard" },
-        ],
-      },
-      {
-        name: "Block 2: Heavy Accumulation",
-        window: "Weeks 13–24",
-        start: "2027-07-13",
-        end: "2027-10-04",
-        focus: ["Strength"],
-        bullets: [
-          "Progressive overload on 5–8 rep top sets",
-          "Bodyweight climbs no faster than 2 lbs per month",
-        ],
-        blockHabits: [
-          { key: "top_sets", label: "5–8 Rep Top Set Logged", sublabel: "Progressive Overload" },
-        ],
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "Athletic Performance",
-    window: "Nov 2027 – Apr 2028",
-    status: "upcoming",
-    summary: "Work capacity and upper yoke development.",
-    badges: ["Conditioning", "Hypertrophy"],
-    blocks: [
-      {
-        name: "Block 1: Engine Work",
-        window: "Weeks 1–12",
-        start: "2027-10-05",
-        end: "2027-12-27",
-        focus: ["Conditioning"],
-        bullets: ["Zone 2 base plus weekly intervals", "Carries and sled work every session"],
-        blockHabits: [
-          { key: "engine", label: "Zone 2 Engine / Intervals", sublabel: "Aerobic Capacity" },
-        ],
-      },
-      {
-        name: "Block 2: Yoke Build",
-        window: "Weeks 13–24",
-        start: "2027-12-28",
-        end: "2028-03-20",
-        focus: ["Hypertrophy"],
-        bullets: ["Traps, delts, upper back triple frequency", "Overhead strength benchmarks"],
-        blockHabits: [
-          { key: "yoke", label: "Yoke / Overhead Work Complete", sublabel: "Traps & Delts" },
-        ],
-      },
-    ],
-  },
-  {
-    id: 4,
-    title: "Hybrid Balance",
-    window: "May 2028 – Oct 2028",
-    status: "upcoming",
-    summary: "Conditioning and functional strength held together.",
-    badges: ["Conditioning", "Strength"],
-    blocks: [
-      {
-        name: "Block 1: Strength + Engine",
-        window: "Weeks 1–12",
-        start: "2028-03-21",
-        end: "2028-06-12",
-        focus: ["Strength"],
-        bullets: ["Two heavy days, two hybrid days", "Rucking and loaded carries weekly"],
-        blockHabits: [
-          { key: "hybrid", label: "Ruck / Loaded Carry Logged", sublabel: "Engine & Core" },
-        ],
-      },
-      {
-        name: "Block 2: Field Test",
-        window: "Weeks 13–24",
-        start: "2028-06-13",
-        end: "2028-09-04",
-        focus: ["Conditioning"],
-        bullets: ["Benchmark events every four weeks", "Hold body fat in single-to-low teens"],
-        blockHabits: [
-          { key: "benchmark", label: "Conditioning Milestone Met", sublabel: "Field Benchmark" },
-        ],
-      },
-    ],
-  },
-  {
-    id: 5,
-    title: "Peak Density",
-    window: "Nov 2028 – Apr 2029",
-    status: "upcoming",
-    summary: "Maximum muscle maturity and leanness.",
-    badges: ["Hypertrophy", "Strength"],
-    blocks: [
-      {
-        name: "Block 1: Density Volume",
-        window: "Weeks 1–12",
-        start: "2028-09-05",
-        end: "2028-11-27",
-        focus: ["Hypertrophy"],
-        bullets: ["Highest tolerable volume with clean technique", "Weak-point specialisation"],
-        blockHabits: [
-          { key: "density", label: "Density Lift Executed", sublabel: "Clean Form & Volume" },
-        ],
-      },
-      {
-        name: "Block 2: Final Lean",
-        window: "Weeks 13–24",
-        start: "2028-11-28",
-        end: "2029-02-19",
-        focus: ["Fat Loss"],
-        bullets: ["Slow controlled cut, zero strength loss", "Full photo and lift audit"],
-        blockHabits: [
-          { key: "audit", label: "Strength Retained Top Sets", sublabel: "Zero Load Compromise" },
-        ],
-      },
-    ],
-  },
-  {
-    id: 6,
-    title: "Project 35",
-    window: "May 2029 – Nov 2029",
-    status: "upcoming",
-    summary: "Permanent identity, peak physique at 35.",
-    badges: ["Strength", "Conditioning"],
-    blocks: [
-      {
-        name: "Block 1: Sharpen",
-        window: "Weeks 1–12",
-        start: "2029-02-20",
-        end: "2029-05-15",
-        focus: ["Peaking"],
-        bullets: ["Peak conditioning with full strength intact", "Photo checkpoint every four weeks"],
-        blockHabits: [
-          { key: "peaking", label: "Peak Performance Session Hit", sublabel: "Strength + Conditioning" },
-        ],
-      },
-      {
-        name: "Block 2: Arrive",
-        window: "Weeks 13–24",
-        start: "2029-05-16",
-        end: "2029-11-01",
-        focus: ["Identity"],
-        bullets: ["Maintain the standard indefinitely", "Arrive at 35 in undeniable shape"],
-        blockHabits: [
-          { key: "identity", label: "The Undeniable Standard Held", sublabel: "Permanent Shape" },
-        ],
-      },
-    ],
-  },
-];
+export type CoachMsg = {
+  role: "user" | "assistant";
+  content: string;
+};
 
-export function daysBetween(from: Date, to: Date) {
-  return Math.ceil((to.getTime() - from.getTime()) / 86_400_000);
+// Safe LocalStorage helpers
+function getLocal<T>(key: string, fallback: T): T {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
-export const LONG_TERM_TARGET = "Target: November 2029 — Age 35";
+function setLocal<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.error(`Failed to save ${key} to localStorage:`, err);
+  }
+}
 
-export function getActiveBlockDetails(now = new Date()) {
-  const nowMs = now.getTime();
-
-  let activePhase = PHASES[0];
-  let activeBlock = PHASES[0].blocks[0];
-
-  for (const phase of PHASES) {
-    for (const block of phase.blocks) {
-      const startMs = new Date(`${block.start}T00:00:00Z`).getTime();
-      const endMs = new Date(`${block.end}T23:59:59Z`).getTime();
-      if (nowMs >= startMs && nowMs <= endMs) {
-        activePhase = phase;
-        activeBlock = block;
-        break;
+function getAllLocalHabits(): Record<string, HabitsState> {
+  const habits: Record<string, HabitsState> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("p35_habits_")) {
+        const day = key.replace("p35_habits_", "");
+        habits[day] = getLocal<HabitsState>(key, {});
       }
+    }
+  } catch (err) {
+    console.error("Failed to read habits from localStorage:", err);
+  }
+  return habits;
+}
+
+function getAllLocalJournals(): Record<string, string> {
+  const journals: Record<string, string> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("p35_journal_")) {
+        const day = key.replace("p35_journal_", "");
+        journals[day] = localStorage.getItem(key) || "";
+      }
+    }
+  } catch (err) {
+    console.error("Failed to read journals from localStorage:", err);
+  }
+  return journals;
+}
+
+function getStoredPhotos(): PhotosState {
+  const stored = getLocal<any>("p35_photos", DEFAULT_PHOTOS);
+  if (stored && "baseline" in stored && !("front" in stored)) {
+    return {
+      front: { baseline: stored.baseline ?? null, current: stored.current ?? null },
+      side: { baseline: null, current: null },
+      back: { baseline: null, current: null },
+    };
+  }
+  return {
+    front: { ...DEFAULT_PHOTOS.front, ...(stored?.front || {}) },
+    side: { ...DEFAULT_PHOTOS.side, ...(stored?.side || {}) },
+    back: { ...DEFAULT_PHOTOS.back, ...(stored?.back || {}) },
+  };
+}
+
+export function buildFullBackup() {
+  return {
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    weighIns: getLocal("p35_weigh_ins", []),
+    hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+    geminiApiKey: localStorage.getItem("p35_gemini_api_key") || "",
+    workout: getLocal("p35_cached_workout", null),
+    photos: getStoredPhotos(),
+    archivedPhotos: getLocal<ArchivedBlockPhotos[]>("p35_archived_photos", []),
+    coachMessages: getLocal("p35_coach_messages", []),
+    habits: getAllLocalHabits(),
+    journals: getAllLocalJournals(),
+  };
+}
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxDim = 1000;
+        let { width, height } = img;
+
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas context failed"));
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// 1. HABITS HOOK
+export function useHabitDay(userId: string | null, dayKey: string) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-habits", userId || "local", dayKey];
+
+  const defaultHabits: HabitsState = {};
+
+  const { data: habits = defaultHabits } = useQuery<HabitsState>({
+    queryKey,
+    queryFn: () => getLocal<HabitsState>(`p35_habits_${dayKey}`, defaultHabits),
+    staleTime: Infinity,
+  });
+
+  const toggle = useMutation({
+    mutationFn: async (key: HabitKey) => {
+      const current = getLocal<HabitsState>(`p35_habits_${dayKey}`, defaultHabits);
+      const updated = { ...current, [key]: !current[key] };
+      setLocal(`p35_habits_${dayKey}`, updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { habits, toggle };
+}
+
+// 2. WEIGH-INS HOOK
+export function useWeighIns(userId: string | null) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-weigh-ins", userId || "local"];
+
+  const { data: entries = [] } = useQuery<WeightEntry[]>({
+    queryKey,
+    queryFn: () => getLocal<WeightEntry[]>("p35_weigh_ins", []),
+    staleTime: Infinity,
+  });
+
+  const save = useMutation({
+    mutationFn: async (entry: WeightEntry) => {
+      const current = getLocal<WeightEntry[]>("p35_weigh_ins", []);
+      const index = current.findIndex((e) => e.date === entry.date);
+      let updated: WeightEntry[];
+      if (index >= 0) {
+        updated = [...current];
+        updated[index] = entry;
+      } else {
+        updated = [...current, entry];
+      }
+      setLocal("p35_weigh_ins", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { entries, save };
+}
+
+// 3. USER SETTINGS HOOK
+export function useUserSettings(userId: string | null) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-settings", userId || "local"];
+
+  const { data = { hevyApiKey: "", workout: null } } = useQuery<UserSettings>({
+    queryKey,
+    queryFn: () => ({
+      hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+      workout: getLocal<HevyWorkout | null>("p35_cached_workout", null),
+    }),
+    staleTime: Infinity,
+  });
+
+  const update = useMutation({
+    mutationFn: async (patch: Partial<UserSettings>) => {
+      if (patch.hevyApiKey !== undefined) {
+        localStorage.setItem("p35_hevy_api_key", patch.hevyApiKey);
+      }
+      if (patch.workout !== undefined) {
+        setLocal("p35_cached_workout", patch.workout);
+      }
+      return {
+        hevyApiKey: localStorage.getItem("p35_hevy_api_key") || "",
+        workout: getLocal<HevyWorkout | null>("p35_cached_workout", null),
+        ...patch,
+      };
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return {
+    hevyApiKey: data.hevyApiKey,
+    workout: data.workout,
+    update,
+  };
+}
+
+// 4. MULTI-ANGLE PHOTOS & ARCHIVE HOOK
+export function usePhotos(userId: string | null) {
+  const qc = useQueryClient();
+  const photosQueryKey = ["p35-photos", userId || "local"];
+  const archiveQueryKey = ["p35-archived-photos", userId || "local"];
+
+  const { data: photos = DEFAULT_PHOTOS } = useQuery<PhotosState>({
+    queryKey: photosQueryKey,
+    queryFn: getStoredPhotos,
+    staleTime: Infinity,
+  });
+
+  const { data: archive = [] } = useQuery<ArchivedBlockPhotos[]>({
+    queryKey: archiveQueryKey,
+    queryFn: () => getLocal<ArchivedBlockPhotos[]>("p35_archived_photos", []),
+    staleTime: Infinity,
+  });
+
+  const upload = useMutation({
+    mutationFn: async ({
+      angle,
+      slot,
+      file,
+    }: {
+      angle: PhotoAngle;
+      slot: PhotoSlot;
+      file: File;
+    }) => {
+      const dataUrl = await compressImage(file);
+      const currentPhotos = getStoredPhotos();
+      const updated: PhotosState = {
+        ...currentPhotos,
+        [angle]: {
+          ...(currentPhotos[angle] || { baseline: null, current: null }),
+          [slot]: dataUrl,
+        },
+      };
+      setLocal("p35_photos", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(photosQueryKey, updated);
+    },
+  });
+
+  const removePhoto = useMutation({
+    mutationFn: async ({ angle, slot }: { angle: PhotoAngle; slot: PhotoSlot }) => {
+      const currentPhotos = getStoredPhotos();
+      const updated: PhotosState = {
+        ...currentPhotos,
+        [angle]: {
+          ...(currentPhotos[angle] || { baseline: null, current: null }),
+          [slot]: null,
+        },
+      };
+      setLocal("p35_photos", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(photosQueryKey, updated);
+    },
+  });
+
+  // Closes the current block: archives Baseline + Current(Final), then populates next Baseline with Current
+  const closeAndArchiveBlock = useMutation({
+    mutationFn: async ({ blockId, blockName }: { blockId: string; blockName: string }) => {
+      const currentPhotos = getStoredPhotos();
+      const currentArchive = getLocal<ArchivedBlockPhotos[]>("p35_archived_photos", []);
+
+      const newArchiveRecord: ArchivedBlockPhotos = {
+        blockId,
+        blockName,
+        dateClosed: new Date().toISOString().slice(0, 10),
+        front: { baseline: currentPhotos.front.baseline, final: currentPhotos.front.current },
+        side: { baseline: currentPhotos.side.baseline, final: currentPhotos.side.current },
+        back: { baseline: currentPhotos.back.baseline, final: currentPhotos.back.current },
+      };
+
+      const updatedArchive = [newArchiveRecord, ...currentArchive];
+      setLocal("p35_archived_photos", updatedArchive);
+
+      // Transition photos: Current becomes the new Baseline; Current resets to null
+      const nextBlockPhotos: PhotosState = {
+        front: { baseline: currentPhotos.front.current ?? currentPhotos.front.baseline, current: null },
+        side: { baseline: currentPhotos.side.current ?? currentPhotos.side.baseline, current: null },
+        back: { baseline: currentPhotos.back.current ?? currentPhotos.back.baseline, current: null },
+      };
+
+      setLocal("p35_photos", nextBlockPhotos);
+      return { photos: nextBlockPhotos, archive: updatedArchive };
+    },
+    onSuccess: ({ photos: newPhotos, archive: newArchive }) => {
+      qc.setQueryData(photosQueryKey, newPhotos);
+      qc.setQueryData(archiveQueryKey, newArchive);
+    },
+  });
+
+  return { photos, archive, upload, removePhoto, closeAndArchiveBlock };
+}
+
+// 5. BACKUP EXPORT & IMPORT UTILITIES
+export function exportDashboardBackup() {
+  const backup = buildFullBackup();
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `project35-backup-${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function importDashboardBackup(file: File): Promise<boolean> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.weighIns) setLocal("p35_weigh_ins", data.weighIns);
+        if (data.hevyApiKey) localStorage.setItem("p35_hevy_api_key", data.hevyApiKey);
+        if (data.geminiApiKey) localStorage.setItem("p35_gemini_api_key", data.geminiApiKey);
+        if (data.workout) setLocal("p35_cached_workout", data.workout);
+        if (data.coachMessages) setLocal("p35_coach_messages", data.coachMessages);
+        if (data.archivedPhotos) setLocal("p35_archived_photos", data.archivedPhotos);
+
+        if (data.photos) {
+          if ("front" in data.photos) {
+            setLocal("p35_photos", data.photos);
+          } else if ("baseline" in data.photos) {
+            setLocal("p35_photos", {
+              front: { baseline: data.photos.baseline ?? null, current: data.photos.current ?? null },
+              side: { baseline: null, current: null },
+              back: { baseline: null, current: null },
+            });
+          }
+        }
+
+        if (data.habits && typeof data.habits === "object") {
+          for (const [dayKey, state] of Object.entries(data.habits)) {
+            setLocal(`p35_habits_${dayKey}`, state);
+          }
+        }
+
+        if (data.journals && typeof data.journals === "object") {
+          for (const [dayKey, text] of Object.entries(data.journals)) {
+            localStorage.setItem(`p35_journal_${dayKey}`, String(text));
+          }
+        }
+
+        resolve(true);
+      } catch {
+        resolve(false);
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
+// 6. COACH MESSAGES HOOK
+export function useCoachMessages(userId: string | null) {
+  const qc = useQueryClient();
+  const queryKey = ["p35-coach-msgs", userId || "local"];
+
+  const { data: messages = [] } = useQuery<CoachMsg[]>({
+    queryKey,
+    queryFn: () => getLocal<CoachMsg[]>("p35_coach_messages", []),
+    staleTime: Infinity,
+  });
+
+  const add = useMutation({
+    mutationFn: async (msg: CoachMsg) => {
+      const current = getLocal<CoachMsg[]>("p35_coach_messages", []);
+      const updated = [...current, msg];
+      setLocal("p35_coach_messages", updated);
+      return updated;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(queryKey, updated);
+    },
+  });
+
+  return { messages, add };
+}
+
+// 7. FRIDAY WEIGH-IN AUTO BACKUP
+export async function triggerFridayBackup(date: string): Promise<void> {
+  const backup = buildFullBackup();
+  const jsonStr = JSON.stringify(backup, null, 2);
+  const fileName = `p35-backup-${date}.json`;
+  const file = new File([jsonStr], fileName, { type: "application/json" });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: `Project 35 Backup (${date})`,
+        text: `Complete snapshot for ${date}`,
+      });
+      return;
+    } catch (err) {
+      if ((err as Error).name === "AbortError") return;
     }
   }
 
-  const lastPhase = PHASES[PHASES.length - 1];
-  const lastBlock = lastPhase.blocks[lastPhase.blocks.length - 1];
-  if (nowMs > new Date(`${lastBlock.end}T23:59:59Z`).getTime()) {
-    activePhase = lastPhase;
-    activeBlock = lastBlock;
-  }
-
-  return { activePhase, activeBlock };
-}
-
-export function getActiveHabits(now = new Date()): HabitDefinition[] {
-  const isWeekend = now.getDay() === 0 || now.getDay() === 6;
-  const { activeBlock } = getActiveBlockDetails(now);
-
-  // 1. Morning Routine / Gym (swaps to dog walk on weekends)
-  const morningHabit: HabitDefinition = isWeekend
-    ? { key: "morning_routine", label: "Morning Dog Walk Completed", sublabel: "Weekend Routine" }
-    : { key: "morning_routine", label: "6:00 AM Gym Session Completed", sublabel: "Weekday Iron" };
-
-  // 2. Permanent Nutrition Anchor 1: Protein
-  const proteinHabit: HabitDefinition = {
-    key: "protein",
-    label: "200g+ Protein Banked",
-    sublabel: "Muscle Retention & Recovery",
-  };
-
-  // 3. Permanent Nutrition Anchor 2: Calories
-  const caloriesHabit: HabitDefinition = {
-    key: "calories",
-    label: "Calorie Target Hit (2,000–2,400 kcal)",
-    sublabel: "Deficit Discipline",
-  };
-
-  // 4. Dynamic block-specific habit(s)
-  const blockSpecificHabits: HabitDefinition[] =
-    activeBlock.blockHabits && activeBlock.blockHabits.length > 0
-      ? activeBlock.blockHabits
-      : [{ key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Activity Base" }];
-
-  return [morningHabit, ...blockSpecificHabits, proteinHabit, caloriesHabit];
-}
-
-export function getActiveBlockCountdown(now = new Date()) {
-  const { activePhase, activeBlock } = getActiveBlockDetails(now);
-
-  const start = new Date(`${activeBlock.start}T00:00:00Z`);
-  const end = new Date(`${activeBlock.end}T23:59:59Z`);
-
-  const total = Math.max(1, daysBetween(start, end));
-  const daysLeft = Math.max(0, daysBetween(now, end));
-  const elapsed = Math.min(total, Math.max(0, total - daysLeft));
-
-  const totalWeeks = Math.max(1, Math.round(total / 7));
-  const currentWeek = Math.min(totalWeeks, Math.floor(elapsed / 7) + 1);
-  const progress = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-
-  const formatDate = (dateStr: string) => {
-    const [y, m, d] = dateStr.split("-").map(Number);
-    const dateObj = new Date(Date.UTC(y, m - 1, d));
-    return dateObj.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
-    });
-  };
-
-  return {
-    phaseId: activePhase.id,
-    phaseTitle: activePhase.title,
-    blockName: activeBlock.name,
-    window: activeBlock.window,
-    goal: activeBlock.bullets[0] || activePhase.summary,
-    dateRange: `${formatDate(activeBlock.start)} — ${formatDate(activeBlock.end)}`,
-    currentWeek,
-    totalWeeks,
-    daysLeft,
-    progress,
-    longTermTarget: LONG_TERM_TARGET,
-  };
-}
-
-export function countdownTo(target: Date, now = new Date()) {
-  const days = Math.max(0, daysBetween(now, target));
-  return {
-    days,
-    weeks: Math.floor(days / 7),
-    months: Math.max(0, Math.round(days / 30.44)),
-  };
-}
-
-export function todayKey(now = new Date()) {
-  return now.toISOString().slice(0, 10);
-}
-
-export function lastFridayKey(now = new Date()) {
-  const d = new Date(now);
-  const diff = (d.getUTCDay() + 2) % 7;
-  d.setUTCDate(d.getUTCDate() - diff);
-  return d.toISOString().slice(0, 10);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

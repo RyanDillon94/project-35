@@ -2,27 +2,37 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DAILY_TARGETS, getActiveHabits, todayKey } from "@/lib/project35";
 import { useHabitDay } from "@/lib/p35-cloud";
-import { Beef, BookOpen, Dumbbell, Footprints, Sunrise, Utensils } from "lucide-react";
+import { Beef, BookOpen, ChevronLeft, ChevronRight, Dumbbell, Footprints, Sunrise, Utensils } from "lucide-react";
 import { toast } from "sonner";
 
 export function NonNegotiables({ userId }: { userId: string | null }) {
-  const day = todayKey();
-  const { habits, toggle } = useHabitDay(userId, day);
-  const activeHabits = useMemo(() => getActiveHabits(), []);
+  const actualToday = todayKey();
+  const [selectedDay, setSelectedDay] = useState(actualToday);
 
-  // Daily Journal Note persistence
-  const journalKey = `p35_journal_${day}`;
-  const [note, setNote] = useState<string>(() => {
+  const { habits, toggle } = useHabitDay(userId, selectedDay);
+
+  // Convert selected string date into Date object
+  const currentDateObj = useMemo(() => {
+    const [y, m, d] = selectedDay.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }, [selectedDay]);
+
+  const activeHabits = useMemo(() => getActiveHabits(currentDateObj), [currentDateObj]);
+
+  // Daily Journal Note persistence for the viewed date
+  const journalKey = `p35_journal_${selectedDay}`;
+  const [note, setNote] = useState<string>("");
+
+  useEffect(() => {
     try {
-      return localStorage.getItem(journalKey) || "";
+      setNote(localStorage.getItem(journalKey) || "");
     } catch {
-      return "";
+      setNote("");
     }
-  });
+  }, [journalKey]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-expand textarea height
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -44,10 +54,30 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
       onError: (error) => toast.error(error instanceof Error ? error.message : "Could not save."),
     });
 
-  // Current Week Top Form Calculation (Monday of this week through today)
+  // Date stepper logic (cannot advance beyond current day)
+  const isToday = selectedDay === actualToday;
+
+  const stepDay = (delta: number) => {
+    const d = new Date(currentDateObj);
+    d.setDate(d.getDate() + delta);
+    const newKey = d.toISOString().slice(0, 10);
+    if (delta > 0 && newKey > actualToday) return;
+    setSelectedDay(newKey);
+  };
+
+  const dateHeading = useMemo(() => {
+    if (isToday) return "Today";
+    return currentDateObj.toLocaleDateString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+  }, [isToday, currentDateObj]);
+
+  // Weekly Top Form Score (Monday of actual current week through today)
   const statsMetric = useMemo(() => {
     const now = new Date();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday
+    const currentDay = now.getDay();
     const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
 
     let totalPossibleChecks = 0;
@@ -69,7 +99,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
             if (parsed[h.key]) totalCompletedChecks++;
           });
         } catch {
-          // ignore corrupted data
+          // ignore corrupted keys
         }
       }
     }
@@ -129,9 +159,37 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         ))}
       </div>
 
-      {/* Dynamic Habits for Today */}
-      <div className="space-y-2 pt-1">
-        <p className="stat-label">Today&apos;s habit check</p>
+      {/* Date Stepper Bar */}
+      <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => stepDay(-1)}
+          className="rounded p-1 text-muted-foreground hover:text-primary transition-colors active:bg-surface-2"
+          aria-label="Previous Day"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <span className="text-xs font-semibold tracking-wide text-foreground">
+          {dateHeading} ({selectedDay})
+        </span>
+        <button
+          type="button"
+          onClick={() => stepDay(1)}
+          disabled={isToday}
+          className={`rounded p-1 transition-colors ${
+            isToday
+              ? "text-muted-foreground/30 cursor-not-allowed"
+              : "text-muted-foreground hover:text-primary active:bg-surface-2"
+          }`}
+          aria-label="Next Day"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+
+      {/* Dynamic Habits for Selected Date */}
+      <div className="space-y-2 pt-0.5">
+        <p className="stat-label">Habit Check</p>
         {activeHabits.map((habit) => {
           const isChecked = Boolean(habits[habit.key]);
           return (
@@ -165,11 +223,11 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         })}
       </div>
 
-      {/* Daily Journal Note */}
+      {/* Daily Journal Note for Selected Date */}
       <div className="pt-2">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1.5">
           <BookOpen className="size-3.5 text-primary" />
-          <span>Daily Journal / Log</span>
+          <span>Daily Journal / Log ({selectedDay})</span>
         </div>
         <textarea
           ref={textareaRef}

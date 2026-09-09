@@ -1,0 +1,175 @@
+import { useMemo, useState } from "react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { GOAL_WEIGHT, lastFridayKey } from "@/lib/project35";
+import { Plus, TrendingDown } from "lucide-react";
+import { toast } from "sonner";
+
+export type WeightEntry = { date: string; weight: number };
+
+export function WeightCard({
+  entries,
+  setEntries,
+}: {
+  entries: WeightEntry[];
+  setEntries: React.Dispatch<React.SetStateAction<WeightEntry[]>>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(lastFridayKey());
+  const [weight, setWeight] = useState("");
+
+  const sorted = useMemo(() => [...entries].sort((a, b) => a.date.localeCompare(b.date)), [entries]);
+  const first = sorted[0]?.weight;
+  const latest = sorted[sorted.length - 1]?.weight;
+  const dropped = first != null && latest != null ? +(first - latest).toFixed(1) : 0;
+  const toGoal = latest != null ? +(latest - GOAL_WEIGHT).toFixed(1) : null;
+
+  const chartData = sorted.map((e) => ({
+    label: e.date.slice(5),
+    weight: e.weight,
+  }));
+
+  const save = () => {
+    const value = Number(weight);
+    if (!Number.isFinite(value) || value < 80 || value > 500) {
+      toast.error("Enter a weight between 80 and 500 lbs.");
+      return;
+    }
+    setEntries((prev) => [...prev.filter((e) => e.date !== date), { date, weight: value }]);
+    toast.success("Friday average logged.");
+    setWeight("");
+    setOpen(false);
+  };
+
+  return (
+    <section className="panel p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <TrendingDown className="size-5 text-primary" />
+          <h2 className="text-lg font-bold">Weight Progression</h2>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="h-9">
+              <Plus className="size-4" /> Log Friday
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Log Friday Weight</DialogTitle>
+              <DialogDescription>
+                Enter your Friday weekly average. Goal line is {GOAL_WEIGHT} lbs.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="friday-date">Friday date</Label>
+                <Input id="friday-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="friday-weight">Weekly average (lbs)</Label>
+                <Input
+                  id="friday-weight"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  placeholder="e.g. 218.4"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
+              </div>
+              {first != null && Number(weight) > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Pounds dropped to date:{" "}
+                  <span className="font-semibold text-primary">
+                    {(first - Number(weight)).toFixed(1)} lbs
+                  </span>
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={save} className="w-full sm:w-auto">
+                Save entry
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {[
+          { label: "Current", value: latest != null ? `${latest} lb` : "\u2014" },
+          { label: "Dropped", value: dropped ? `${dropped} lb` : "\u2014" },
+          { label: "To goal", value: toGoal != null ? `${Math.max(0, toGoal)} lb` : "\u2014" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-lg border border-border bg-surface-2/60 p-3 text-center">
+            <p className="font-display text-lg font-bold text-primary">{s.value}</p>
+            <p className="stat-label">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 h-56 w-full">
+        {chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+            Log your first Friday average to start the trend.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+              <CartesianGrid stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis
+                domain={[GOAL_WEIGHT - 6, "auto"]}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--popover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  color: "var(--foreground)",
+                }}
+              />
+              <ReferenceLine
+                y={GOAL_WEIGHT}
+                stroke="var(--gold)"
+                strokeDasharray="5 4"
+                label={{ value: `Goal ${GOAL_WEIGHT}`, fill: "var(--gold)", fontSize: 11, position: "insideTopRight" }}
+              />
+              <Line
+                type="monotone"
+                dataKey="weight"
+                stroke="var(--primary)"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: "var(--primary)" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </section>
+  );
+}

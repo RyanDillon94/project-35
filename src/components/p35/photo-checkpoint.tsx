@@ -9,7 +9,6 @@ import {
 } from "@/lib/p35-cloud";
 import {
   Archive,
-  ArrowRight,
   Camera,
   CheckCircle2,
   FolderArchive,
@@ -33,14 +32,17 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveAngle, setArchiveAngle] = useState<PhotoAngle>("front");
 
-  const { photos, archive, upload, removePhoto, closeAndArchiveBlock } = usePhotos(userId);
+  // TEST SIMULATOR TOGGLE
+  const [simulateFinalWeek, setSimulateFinalWeek] = useState(false);
+
+  const { photos, archive = [], upload, removePhoto, closeAndArchiveBlock } = usePhotos(userId);
   const pending = useRef<PhotoSlot>("baseline");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { currentWeek, totalWeeks, blockName, phaseTitle } = getActiveBlockCountdown();
-  const isFinalWeek = currentWeek >= totalWeeks;
+  const isFinalWeek = currentWeek >= totalWeeks || simulateFinalWeek;
 
-  const activeAnglePhotos = photos[selectedAngle] || { baseline: null, current: null };
+  const activeAnglePhotos = photos?.[selectedAngle] || { baseline: null, current: null };
 
   const pick = (slot: PhotoSlot) => {
     pending.current = slot;
@@ -68,11 +70,11 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
 
   const handleCloseBlock = () => {
     const hasCurrent = Boolean(
-      photos.front.current || photos.side.current || photos.back.current,
+      photos?.front?.current || photos?.side?.current || photos?.back?.current,
     );
 
     if (!hasCurrent) {
-      toast.error("Please upload your final block photos in 'Current' before closing the block.");
+      toast.error("Upload at least one final photo in 'Current' before closing the block.");
       return;
     }
 
@@ -83,7 +85,8 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
       },
       {
         onSuccess: () => {
-          toast.success("Block closed! Baseline populated for the next block.");
+          toast.success("Block closed! Baseline populated for next block.");
+          setSimulateFinalWeek(false);
         },
         onError: () => toast.error("Could not archive block photos."),
       },
@@ -97,7 +100,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
 
   return (
     <section className="panel p-5 space-y-4">
-      {/* Header with Angle Tabs & Archive Button */}
+      {/* Header with Angle Tabs, Test Button & Archive Button */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Camera className="size-5 text-primary" />
@@ -105,8 +108,17 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
           {upload.isPending && <Loader2 className="size-4 animate-spin text-primary" />}
         </div>
 
-        <div className="flex items-center gap-2">
-          {archive.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Quick Test Simulator Button */}
+          <button
+            type="button"
+            onClick={() => setSimulateFinalWeek((v) => !v)}
+            className="rounded-md border border-dashed border-primary/50 bg-primary/5 px-2 py-1 text-[11px] font-mono text-primary hover:bg-primary/10"
+          >
+            {simulateFinalWeek ? "Exit Test" : "Test Closeout"}
+          </button>
+
+          {(archive?.length ?? 0) > 0 && (
             <button
               type="button"
               onClick={() => setArchiveOpen(true)}
@@ -293,7 +305,7 @@ export function PhotoCheckpoint({ userId }: { userId: string | null }) {
 }
 
 function ArchiveModal({
-  archive,
+  archive = [],
   angle,
   onAngleChange,
   onClose,
@@ -312,7 +324,6 @@ function ArchiveModal({
         className="relative max-h-[90vh] max-w-lg w-full flex flex-col overflow-hidden rounded-2xl border border-border bg-surface-1 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Top Bar */}
         <div className="flex items-center justify-between border-b border-border p-4">
           <div className="flex items-center gap-2">
             <FolderArchive className="size-4 text-primary" />
@@ -327,7 +338,6 @@ function ArchiveModal({
           </button>
         </div>
 
-        {/* Angle Selector */}
         <div className="flex items-center justify-center gap-1 border-b border-border/60 bg-surface-2/30 p-2">
           {ANGLES.map((a) => (
             <button
@@ -336,7 +346,7 @@ function ArchiveModal({
               onClick={() => onAngleChange(a.id)}
               className={`rounded-md px-3 py-1 text-xs font-semibold transition-all ${
                 angle === a.id
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -345,10 +355,9 @@ function ArchiveModal({
           ))}
         </div>
 
-        {/* Scrollable Block Pairs */}
         <div className="overflow-y-auto p-4 space-y-6">
           {archive.map((record) => {
-            const angleData = record[angle];
+            const angleData = record[angle] || { baseline: null, final: null };
             return (
               <div
                 key={record.blockId + record.dateClosed}

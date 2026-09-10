@@ -41,6 +41,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
       const k = d.toISOString().slice(0, 10);
+      const dayOfWeek = d.getUTCDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
       const dayHabits = getActiveHabits(d);
       const rawHabits = localStorage.getItem(`p35_habits_${k}`);
@@ -52,6 +54,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
 
       dayHabits.forEach((h) => {
+        // Skip weekday-only habits on weekends so denominators match 5 days instead of 7
+        const isWeekdayOnly = h.key === "workout_complete" || h.key === "early_morning";
+        if (isWeekend && isWeekdayOnly) {
+          return;
+        }
+
         if (!habitStats[h.key]) {
           habitStats[h.key] = { label: h.label, completed: 0, total: 0 };
         }
@@ -90,7 +98,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     if (!summaryData) return;
     setLoadingAi(true);
     try {
-      // Prompt construction leveraging your weekly bundle
       const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No notes logged.";
       const prompt = `Review my week for Project 35. Overall habit compliance was ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible}). 
       Here are my daily journal notes from the week:
@@ -98,8 +105,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       
       Provide a concise AI weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.`;
 
-      // We can hook into your custom coach logic or a lightweight fetch here
-      // For now, let's simulate the structured response generation or plug into your AI endpoint
       setTimeout(() => {
         let verdict = "";
         if (summaryData.overallPercentage === 100) {

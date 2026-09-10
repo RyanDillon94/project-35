@@ -77,7 +77,7 @@ export function WeeklyTrendsAnalytics() {
         <TrendingUp className="size-5 shrink-0 text-primary" />
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate text-foreground">Weekly Trends & Analytics</p>
-          <p className="text-xs text-muted-foreground truncate">Review 4-week compliance history and scores</p>
+          <p className="text-xs text-muted-foreground truncate">Review 4-week compliance history</p>
         </div>
       </div>
 

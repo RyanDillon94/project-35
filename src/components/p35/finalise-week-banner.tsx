@@ -19,7 +19,6 @@ function FormattedSynthesis({ text }: { text: string }) {
         const trimmed = line.trim();
         if (!trimmed) return null;
 
-        // Check if it's a standalone header line wrapped in **
         if (trimmed.startsWith("**") && trimmed.endsWith("**") && !trimmed.slice(2, -2).includes("**")) {
           return (
             <p key={i} className="font-bold text-primary pt-2 first:pt-0 text-sm">
@@ -28,7 +27,6 @@ function FormattedSynthesis({ text }: { text: string }) {
           );
         }
 
-        // Clean up markdown bold markers for regular lines/bullets
         const formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, "$1");
         const isBullet = formattedLine.startsWith("*") || formattedLine.startsWith("-");
         const cleanText = isBullet ? formattedLine.replace(/^[*-\s]+/, "• ") : formattedLine;
@@ -206,7 +204,26 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
   };
 
-  if (!summaryData || !summaryData.isSunday) {
+  const handleLockInWeek = () => {
+    const weekKey = `p35_finalised_week_${todayKey()}`;
+    const weekArchiveRecord = {
+      date: todayKey(),
+      overallPercentage: summaryData?.overallPercentage ?? 0,
+      totalCompleted: summaryData?.totalCompleted ?? 0,
+      totalPossible: summaryData?.totalPossible ?? 0,
+      breakdown: summaryData?.habitBreakdown ?? [],
+      aiSynthesis: summaryData?.aiSummary ?? "",
+    };
+
+    localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
+    localStorage.setItem("p35_last_locked_week", todayKey());
+    
+    toast.success("Week locked in and sealed. Outstanding standard.");
+    setIsOpen(false);
+  };
+
+  const lastLocked = localStorage.getItem("p35_last_locked_week");
+  if (!summaryData || !summaryData.isSunday || lastLocked === todayKey()) {
     return null;
   }
 
@@ -298,7 +315,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 )}
               </div>
 
-              <Button className="w-full" onClick={() => setIsOpen(false)}>
+              <Button className="w-full" onClick={handleLockInWeek}>
                 Lock In & Close Summary
               </Button>
             </div>

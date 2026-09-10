@@ -1,113 +1,100 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { DAILY_TARGETS, getActiveHabits, todayKey } from "@/lib/project35";
-import { useHabitDay } from "@/lib/p35-cloud";
-import { Beef, BookOpen, ChevronLeft, ChevronRight, Dumbbell, Footprints, Sunrise, Utensils } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  getActiveBlockDetails, 
+  getActiveHabits, 
+  todayKey, 
+  DAILY_TARGETS, 
+  GOAL_WEIGHT 
+} from "@/lib/project35";
+import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
-// Pure UTC helper to avoid timezone day skipping
-function shiftIsoDate(isoDate: string, daysDelta: number): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  date.setUTCDate(date.getUTCDate() + daysDelta);
-  return date.toISOString().slice(0, 10);
+function getCoachSystemPrompt() {
+  const { activePhase, activeBlock } = getActiveBlockDetails();
+
+  return `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
+Rules:
+- Celebrate only earned wins, briefly. No hype, no filler, no emoji.
+- Athlete Phase Context: Phase ${activePhase.id} (${activePhase.title}) — ${activeBlock.name}. Focus: ${activeBlock.focus.join(", ")}. Phase Summary: ${activePhase.summary}
+- Live Targets: ${DAILY_TARGETS.caloriesMin.toLocaleString()}–${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps.toLocaleString()} steps daily, routine standard: "${DAILY_TARGETS.routine}", target benchmark: ${GOAL_WEIGHT} lbs, arriving at 35 in November 2029 in undeniable shape.
+- Kilograms in, kilograms out for lifts; pounds for bodyweight.
+- Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
 }
 
-export function NonNegotiables({ userId }: { userId: string | null }) {
-  const actualToday = todayKey();
-  const [selectedDay, setSelectedDay] = useState(actualToday);
+function FormattedSynthesis({ text }: { text: string }) {
+  return (
+    <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+      {text.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
 
-  const { habits, toggle } = useHabitDay(userId, selectedDay);
+        if (trimmed.startsWith("**") && trimmed.endsWith("**") && !trimmed.slice(2, -2).includes("**")) {
+          return (
+            <p key={i} className="font-bold text-primary pt-2 first:pt-0 text-sm">
+              {trimmed.slice(2, -2)}
+            </p>
+          );
+        }
 
-  const currentDateObj = useMemo(() => {
-    const [y, m, d] = selectedDay.split("-").map(Number);
-    return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-  }, [selectedDay]);
+        const formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, "$1");
+        const isBullet = formattedLine.startsWith("*") || formattedLine.startsWith("-");
+        const cleanText = isBullet ? formattedLine.replace(/^[*-\s]+/, "• ") : formattedLine;
 
-  const activeHabits = useMemo(() => getActiveHabits(currentDateObj), [currentDateObj]);
+        return (
+          <p key={i} className={isBullet ? "pl-2 font-medium text-foreground/90" : ""}>
+            {cleanText}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
 
-  const journalKey = `p35_journal_${selectedDay}`;
-  const [note, setNote] = useState<string>("");
+export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [summaryData, setSummaryData] = useState<{
+    isSunday: boolean;
+    isPhotoWeek: boolean;
+    totalPossible: number;
+    totalCompleted: number;
+    overallPercentage: number;
+    habitBreakdown: { label: string; completed: number; total: number }[];
+    journals: string[];
+    aiSummary: string;
+  } | null>(null);
 
-  useEffect(() => {
-    try {
-      setNote(localStorage.getItem(journalKey) || "");
-    } catch {
-      setNote("");
-    }
-  }, [journalKey]);
+  const calculateWeekData = useCallback(() => {
+    const today = new Date(todayKey() + "T00:00:00Z");
+    const isSunday = today.getUTCDay() === 0;
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.max(68, textareaRef.current.scrollHeight)}px`;
-    }
-  }, [note]);
-
-  const handleNoteChange = (text: string) => {
-    setNote(text);
-    try {
-      localStorage.setItem(journalKey, text);
-    } catch (err) {
-      console.error("Failed to save journal:", err);
-    }
-  };
-
-  const onToggle = (key: string) =>
-    toggle.mutate(key, {
-      onError: (error) => toast.error(error instanceof Error ? error.message : "Could not save."),
-    });
-
-  // Predictable date navigation
-  const isToday = selectedDay >= actualToday;
-
-  const stepDay = (delta: number) => {
-    const nextDate = shiftIsoDate(selectedDay, delta);
-    if (delta > 0 && nextDate > actualToday) return;
-    setSelectedDay(nextDate);
-  };
-
-  const dateHeading = useMemo(() => {
-    if (selectedDay === actualToday) return "Today";
-    return currentDateObj.toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      timeZone: "UTC",
-    });
-  }, [selectedDay, actualToday, currentDateObj]);
-
-  // Weekly Top Form Score (Monday of current selected week through selected day)
-  const statsMetric = useMemo(() => {
-    const [y, m, dNum] = selectedDay.split("-").map(Number);
-    const selDate = new Date(Date.UTC(y, m - 1, dNum, 12, 0, 0));
+    const startDate = new Date("2026-09-07T00:00:00Z");
+    const diffTime = Math.abs(today.getTime() - startDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const currentWeekNumber = Math.max(1, Math.ceil(diffDays / 7));
     
-    // Find Monday of the selected day's week (UTC-safe)
-    const dayOfWeek = selDate.getUTCDay(); // 0 is Sunday, 1 is Monday...
-    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    
-    const mondayDate = new Date(selDate);
-    mondayDate.setUTCDate(selDate.getUTCDate() - daysSinceMonday);
+    const isPhotoWeek = isSunday && currentWeekNumber % 4 === 0;
 
+    const habitStats: Record<string, { label: string; completed: number; total: number; isWeekdayOnly?: boolean }> = {};
     let totalPossibleChecks = 0;
     let totalCompletedChecks = 0;
+    const journals: string[] = [];
 
-    // Loop from Monday up to the selected day
-    const loopDate = new Date(mondayDate);
-    while (loopDate.getTime() <= selDate.getTime()) {
-      const k = loopDate.toISOString().slice(0, 10);
-      const loopDayOfWeek = loopDate.getUTCDay();
-      const isWeekend = loopDayOfWeek === 0 || loopDayOfWeek === 6;
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setUTCDate(today.getUTCDate() - i);
+      const k = d.toISOString().slice(0, 10);
+      const dayOfWeek = d.getUTCDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
-      const dayHabits = getActiveHabits(loopDate);
-      
-      const raw = localStorage.getItem(`p35_habits_${k}`);
+      const dayHabits = getActiveHabits(d);
+      const rawHabits = localStorage.getItem(`p35_habits_${k}`);
       let parsedHabits: Record<string, boolean> = {};
-      if (raw) {
+      if (rawHabits) {
         try {
-          parsedHabits = JSON.parse(raw);
+          parsedHabits = JSON.parse(rawHabits);
         } catch {}
       }
 
@@ -123,153 +110,254 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
           return;
         }
 
-        totalPossibleChecks++;
-        // If we are looking at the currently selected day in state, use live `habits` state; otherwise read storage
-        if (k === selectedDay && habits[h.key]) {
-          totalCompletedChecks++;
-        } else if (parsedHabits[h.key]) {
-          totalCompletedChecks++;
+        if (!habitStats[h.key]) {
+          habitStats[h.key] = { 
+            label: h.label, 
+            completed: 0, 
+            total: 0, 
+            isWeekdayOnly 
+          };
+        }
+
+        if (parsedHabits[h.key]) {
+          habitStats[h.key].completed++;
         }
       });
 
-      // Advance loop date by 1 day UTC
-      loopDate.setUTCDate(loopDate.getUTCDate() + 1);
+      const rawJournal = localStorage.getItem(`p35_journal_${k}`);
+      if (rawJournal && rawJournal.trim()) {
+        journals.push(`${k}: ${rawJournal.trim()}`);
+      }
     }
 
-    const formScore =
-      totalPossibleChecks > 0
-        ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100)
-        : 0;
+    const finalizedBreakdown = Object.values(habitStats).map((stat) => {
+      const total = stat.isWeekdayOnly ? 5 : 7;
+      const completed = Math.min(stat.completed, total);
+      return {
+        label: stat.label,
+        completed,
+        total,
+      };
+    });
 
-    return { formScore };
-  }, [habits, selectedDay]);
+    totalPossibleChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.total, 0);
+    totalCompletedChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.completed, 0);
 
-  const done = activeHabits.filter((h) => habits[h.key]).length;
+    const overallPercentage = totalPossibleChecks > 0 
+      ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100) 
+      : 0;
 
-  const targetStats = [
-    {
-      icon: Utensils,
-      label: "Calories",
-      value: `${DAILY_TARGETS.caloriesMin.toLocaleString()}–${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal`,
-    },
-    { icon: Beef, label: "Protein", value: `${DAILY_TARGETS.protein}g+` },
-    { icon: Footprints, label: "Steps", value: DAILY_TARGETS.steps.toLocaleString() },
-    { icon: Sunrise, label: "Routine", value: DAILY_TARGETS.routine },
-  ];
+    setSummaryData((prev) => ({
+      isSunday,
+      isPhotoWeek,
+      totalPossible: totalPossibleChecks,
+      totalCompleted: totalCompletedChecks,
+      overallPercentage,
+      habitBreakdown: finalizedBreakdown,
+      journals,
+      aiSummary: prev?.aiSummary && !prev.aiSummary.startsWith("Tap below") 
+        ? prev.aiSummary 
+        : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
+    }));
+  }, []);
+
+  useEffect(() => {
+    calculateWeekData();
+  }, [calculateWeekData]);
+
+  const generateAiSummary = async () => {
+    if (!summaryData) return;
+    
+    const apiKey = localStorage.getItem("p35_gemini_api_key");
+    if (!apiKey) {
+      toast.error("Add your Gemini API key first.");
+      setLoadingAi(false);
+      return;
+    }
+
+    setLoadingAi(true);
+    try {
+      const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
+      const breakdownText = summaryData.habitBreakdown
+        .map((h) => `- ${h.label}: ${h.completed}/${h.total}`)
+        .join("\n");
+
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nDaily Journal Notes:\n${journalText}`;
+      
+      const userPrompt = "Review my completed week based on my performance data and journal notes. Provide a sharp, direct weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.";
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [
+              {
+                text: `${getCoachSystemPrompt()}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
+              },
+            ],
+          },
+          contents: [
+            { role: "user", parts: [{ text: userPrompt }] }
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `Gemini request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!reply) throw new Error("No response generated by Gemini.");
+
+      setSummaryData((prev) => (prev ? { ...prev, aiSummary: reply.trim() } : null));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate AI weekly summary.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleLockInWeek = () => {
+    if (!summaryData) {
+      setIsOpen(false);
+      return;
+    }
+
+    const weekKey = `p35_finalised_week_${todayKey()}`;
+    const overallPct = summaryData.overallPercentage ?? 0;
+    
+    const weekArchiveRecord = {
+      date: todayKey(),
+      overallPercentage: overallPct,
+      totalCompleted: summaryData.totalCompleted ?? 0,
+      totalPossible: summaryData.totalPossible ?? 0,
+      breakdown: summaryData.habitBreakdown ?? [],
+      aiSynthesis: summaryData.aiSummary ?? "",
+    };
+
+    try {
+      localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
+      localStorage.setItem("p35_last_locked_week", todayKey());
+    } catch (err) {
+      console.error("Failed to save weekly archive to localStorage", err);
+    }
+    
+    setIsOpen(false);
+
+    if (overallPct < 50) {
+      toast.error(`Week locked in at ${overallPct}%. Absolute shambles. Sort your shit out.`);
+    } else if (overallPct < 80) {
+      toast.error(`Week locked in at ${overallPct}%. Decent base, but you left meat on the bone.`);
+    } else if (overallPct === 100) {
+      toast.success(`Week locked in at 100%. Absolute clinic. Flawless execution.`);
+    } else {
+      toast.success(`Week locked in at ${overallPct}%. Smashing it. Standard held.`);
+    }
+  };
+
+  if (!summaryData || !summaryData.isSunday) {
+    return null;
+  }
 
   return (
-    <section className="panel p-5 space-y-4">
-      {/* Top Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Dumbbell className="size-5 shrink-0 text-primary" />
-          <h2 className="text-base sm:text-lg font-bold truncate">Daily Non-Negotiables</h2>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-            {statsMetric.formScore}% of week
-          </span>
-          <span className="font-display text-sm text-primary">
-            {done}/{activeHabits.length}
-          </span>
-        </div>
-      </div>
-
-      {/* Target Metrics Grid */}
-      <div className="grid gap-2 sm:grid-cols-2">
-        {targetStats.map((s) => (
-          <div
-            key={s.label}
-            className="flex items-center gap-3 rounded-lg border border-border bg-surface-2/60 p-3"
-          >
-            <s.icon className="size-4 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="stat-label">{s.label}</p>
-              <p className="truncate text-sm font-semibold">{s.value}</p>
-            </div>
+    <div className="panel border-primary/40 bg-primary/10 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/20 text-primary">
+            <CalendarCheck className="size-5" />
           </div>
-        ))}
-      </div>
+          <div>
+            <h3 className="text-sm font-bold text-foreground">Sunday: Finalise Week</h3>
+            <p className="text-xs text-muted-foreground">Review metrics, synthesize journals, and lock in the week.</p>
+          </div>
+        </div>
 
-      {/* Date Stepper Bar */}
-      <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2/40 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => stepDay(-1)}
-          className="rounded p-1 text-muted-foreground hover:text-primary transition-colors active:bg-surface-2"
-          aria-label="Previous Day"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <span className="text-xs font-semibold tracking-wide text-foreground">
-          {dateHeading} ({selectedDay})
-        </span>
-        <button
-          type="button"
-          onClick={() => stepDay(1)}
-          disabled={isToday}
-          className={`rounded p-1 transition-colors ${
-            isToday
-              ? "text-muted-foreground/30 cursor-not-allowed"
-              : "text-muted-foreground hover:text-primary active:bg-surface-2"
-          }`}
-          aria-label="Next Day"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
+        <Dialog open={isOpen} onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) {
+            calculateWeekData();
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="gap-1.5 shrink-0">
+              <Sparkles className="size-4" />
+              Finalise
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Trophy className="size-5 text-primary" />
+                Weekly Performance Summary
+              </DialogTitle>
+            </DialogHeader>
 
-      {/* Habits Checklist for Selected Date */}
-      <div className="space-y-2 pt-0.5">
-        <p className="stat-label">Habit Check</p>
-        {activeHabits.map((habit) => {
-          const isChecked = Boolean(habits[habit.key]);
-          return (
-            <label
-              key={habit.key}
-              className={`flex min-h-12 cursor-pointer items-center justify-between rounded-lg border px-3 py-3 transition-colors ${
-                isChecked
-                  ? "border-primary/40 bg-primary/10"
-                  : "border-border bg-surface-2/40 hover:bg-surface-2/70 active:bg-surface-2"
-              }`}
-            >
-              <div className="min-w-0 pr-3">
-                <span
-                  className={`block text-sm font-medium leading-snug ${
-                    isChecked ? "text-primary font-semibold" : "text-foreground"
-                  }`}
-                >
-                  {habit.label}
-                </span>
-                {habit.sublabel && (
-                  <span className="block text-[11px] text-muted-foreground">{habit.sublabel}</span>
+            <div className="space-y-4 pt-2">
+              {summaryData.isPhotoWeek && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 flex items-start gap-3">
+                  <Camera className="size-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold text-amber-500">4-Week Photo Checkpoint Due</p>
+                    <p className="text-muted-foreground">This is your 4-week rotation Sunday. Upload your checkpoint photos below to clear this requirement.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-border bg-surface-2/60 p-4 text-center space-y-1">
+                <p className="stat-label">You were on form for</p>
+                <p className="font-display text-3xl font-bold text-primary">{summaryData.overallPercentage}%</p>
+                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total checks)</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Non-Negotiables Breakdown</p>
+                <div className="space-y-1.5 rounded-lg border border-border bg-surface-2/40 p-3">
+                  {summaryData.habitBreakdown.map((h, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
+                      <span className="text-foreground font-medium">{h.label}</span>
+                      <span className="font-semibold text-primary">{h.completed}/{h.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-primary/30 bg-surface-2/60 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Sparkles className="size-4" />
+                    <span>AI Coach Weekly Synthesis</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
+                    onClick={() => void generateAiSummary()}
+                    disabled={loadingAi}
+                  >
+                    {loadingAi ? <Loader2 className="size-3 animate-spin" /> : "Generate / Refresh"}
+                  </Button>
+                </div>
+                {loadingAi ? (
+                  <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    <span>Synthesizing journal notes and performance...</span>
+                  </div>
+                ) : (
+                  <FormattedSynthesis text={summaryData.aiSummary} />
                 )}
               </div>
-              <Checkbox
-                checked={isChecked}
-                onCheckedChange={() => onToggle(habit.key)}
-                className="size-5 shrink-0"
-              />
-            </label>
-          );
-        })}
-      </div>
 
-      {/* Daily Journal Note for Selected Date */}
-      <div className="pt-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-1.5">
-          <BookOpen className="size-3.5 text-primary" />
-          <span>Daily Journal / Log ({selectedDay})</span>
-        </div>
-        <textarea
-          ref={textareaRef}
-          rows={2}
-          value={note}
-          placeholder="Log weight, workout reflection, hunger, or thoughts thoughts..."
-          onChange={(e) => handleNoteChange(e.target.value)}
-          className="w-full min-h-[68px] resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2.5 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
-        />
+              <Button className="w-full" onClick={handleLockInWeek}>
+                Lock In & Close Summary
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-    </section>
+    </div>
   );
 }

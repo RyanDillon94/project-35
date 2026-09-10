@@ -92,21 +92,38 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
       const d = new Date(now);
       d.setDate(now.getDate() - (daysSinceMonday - i));
       const k = d.toISOString().slice(0, 10);
+      const dayOfWeek = d.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
       const dayHabits = getActiveHabits(d);
-      totalPossibleChecks += dayHabits.length;
-
+      
       const raw = localStorage.getItem(`p35_habits_${k}`);
+      let parsedHabits: Record<string, boolean> = {};
       if (raw) {
         try {
-          const parsed = JSON.parse(raw);
-          dayHabits.forEach((h) => {
-            if (parsed[h.key]) totalCompletedChecks++;
-          });
-        } catch {
-          // ignore corrupted keys
-        }
+          parsedHabits = JSON.parse(raw);
+        } catch {}
       }
+
+      dayHabits.forEach((h) => {
+        const labelLower = h.label.toLowerCase();
+        const isWeekdayOnly = 
+          h.key === "workout_complete" || 
+          h.key === "early_morning" || 
+          labelLower.includes("workout") || 
+          labelLower.includes("6:00 am");
+
+        if (isWeekend && isWeekdayOnly) {
+          return;
+        }
+
+        totalPossibleChecks++;
+        if (k === selectedDay && habits[h.key]) {
+          totalCompletedChecks++;
+        } else if (parsedHabits[h.key]) {
+          totalCompletedChecks++;
+        }
+      });
     }
 
     const formScore =
@@ -115,7 +132,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         : 100;
 
     return { formScore };
-  }, [habits]);
+  }, [habits, selectedDay]);
 
   const done = activeHabits.filter((h) => habits[h.key]).length;
 

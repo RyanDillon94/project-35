@@ -144,7 +144,8 @@ export function HevyCard({
           <div className="space-y-2">
             {displayWorkout.exercises.map((ex, i) => {
               const lastSet = ex.sets[ex.sets.length - 1];
-              const isCardio = ex.sets.some((s) => s.distanceMeters != null || s.durationSeconds != null || (s.weightKg == null && s.reps == null));
+              // Detect cardio if duration fields exist or if weight/reps are absent
+              const isCardio = ex.sets.some((s) => s.durationSeconds != null || (s.weightKg == null && s.reps == null));
 
               return (
                 <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
@@ -158,14 +159,16 @@ export function HevyCard({
                   {isCardio ? (
                     <div className="mt-1.5 space-y-1">
                       {ex.sets.map((s, sIdx) => {
-                        const distKm = s.distanceMeters ? `${(s.distanceMeters / 1000).toFixed(2)} km` : null;
-                        const durMins = s.durationSeconds ? `${Math.round(s.durationSeconds / 60)} minutes` : null;
-                        const cardioText = [distKm, durMins].filter(Boolean).join(" - ") || "Cardio Session";
-                        return (
+                        const totalSecs = s.durationSeconds || (s.reps && !s.weightKg ? s.reps * 60 : null);
+                        const timeText = totalSecs 
+                          ? `${Math.floor(totalSecs / 60)} minutes${totalSecs % 60 > 0 ? ` ${totalSecs % 60}s` : ''}` 
+                          : null;
+
+                        return timeText ? (
                           <p key={sIdx} className="text-xs font-medium text-primary">
-                            {cardioText}
+                            {timeText}
                           </p>
-                        );
+                        ) : null;
                       })}
                     </div>
                   ) : (

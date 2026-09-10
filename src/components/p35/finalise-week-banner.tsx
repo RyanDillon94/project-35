@@ -32,11 +32,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     // Every 4th week is a photo checkpoint week
     const isPhotoWeek = isSunday && currentWeekNumber % 4 === 0;
 
-    const habitStats: Record<string, { label: string; completed: number; total: number }> = {};
+    const habitStats: Record<string, { label: string; completed: number; total: number; isWeekdayOnly?: boolean }> = {};
     let totalPossibleChecks = 0;
     let totalCompletedChecks = 0;
     const journals: string[] = [];
 
+    // First pass: collect completions and initialize stats structures
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
@@ -54,7 +55,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
 
       dayHabits.forEach((h) => {
-        // Identify weekday-only routines by key or label match
         const labelLower = h.label.toLowerCase();
         const isWeekdayOnly = 
           h.key === "workout_complete" || 
@@ -62,20 +62,22 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           labelLower.includes("workout") || 
           labelLower.includes("6:00 am");
 
-        // Skip weekday-only habits on weekends (denominator becomes 5 instead of 7)
+        // Skip tracking weekday routines on weekends completely
         if (isWeekend && isWeekdayOnly) {
           return;
         }
 
         if (!habitStats[h.key]) {
-          habitStats[h.key] = { label: h.label, completed: 0, total: 0 };
+          habitStats[h.key] = { 
+            label: h.label, 
+            completed: 0, 
+            total: 0, 
+            isWeekdayOnly 
+          };
         }
-        habitStats[h.key].total++;
-        totalPossibleChecks++;
 
         if (parsedHabits[h.key]) {
           habitStats[h.key].completed++;
-          totalCompletedChecks++;
         }
       });
 
@@ -84,6 +86,22 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         journals.push(`${k}: ${rawJournal.trim()}`);
       }
     }
+
+    // Second pass: enforce exact totals (5 for weekday-only routines, 7 for daily nutrition/steps)
+    const finalizedBreakdown = Object.values(habitStats).map((stat) => {
+      const total = stat.isWeekdayOnly ? 5 : 7;
+      // Cap completed checks so they never exceed the strict denominator
+      const completed = Math.min(stat.completed, total);
+      return {
+        label: stat.label,
+        completed,
+        total,
+      };
+    });
+
+    // Recalculate true total possible checks and completed checks based on clean denominators
+    totalPossibleChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.total, 0);
+    totalCompletedChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.completed, 0);
 
     const overallPercentage = totalPossibleChecks > 0 
       ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100) 
@@ -95,7 +113,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       totalPossible: totalPossibleChecks,
       totalCompleted: totalCompletedChecks,
       overallPercentage,
-      habitBreakdown: Object.values(habitStats),
+      habitBreakdown: finalizedBreakdown,
       journals,
       aiSummary: "Tap below to generate your AI weekly journal synthesis and performance verdict.",
     });
@@ -183,7 +201,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
               <div className="rounded-lg border border-border bg-surface-2/60 p-4 text-center space-y-1">
                 <p className="stat-label">You were on form for</p>
                 <p className="font-display text-3xl font-bold text-primary">{summaryData.overallPercentage}%</p>
-                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/${summaryData.totalPossible} total checks)</p>
+                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total checks)</p>
               </div>
 
               {/* Habit Breakdown List */}

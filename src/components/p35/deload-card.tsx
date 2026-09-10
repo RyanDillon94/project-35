@@ -1,69 +1,51 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Umbrella, CheckCircle2 } from "lucide-react";
 import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
+import { Umbrella } from "lucide-react";
 
 export function DeloadCard() {
-  const [isDeload, setIsDeload] = useState(false);
-  const [notification, setNotification] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      setIsDeload(getDeloadOffset() > 0);
-    } catch {}
-  }, []);
-
-  const toggleDeload = () => {
-    try {
-      toggleDeloadWeek();
-      const activeNow = getDeloadOffset() > 0;
-      setIsDeload(activeNow);
-
-      if (activeNow) {
-        setNotification("Deload Week Activated — Updating schedule...");
-      } else {
-        setNotification("Deload Week Deactivated — Restoring standards...");
-      }
-
-      // Small delay so you can read the status banner, then refresh so all components recalculate dates
-      setTimeout(() => {
-        window.location.reload();
-      }, 700);
-    } catch {
-      setNotification("Failed to update deload state");
-    }
-  };
+  const isDeloadActive = getDeloadOffset() > 0;
 
   return (
-    <div className="flex flex-col w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
-      <div className="flex items-center justify-between w-full">
-        <div className="flex items-center gap-3 min-w-0 pr-2">
-          <Umbrella className={`size-5 shrink-0 ${isDeload ? "text-amber-500 animate-pulse" : "text-primary"}`} />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {isDeload ? "Active — Deload Week" : "Standard mode active"}
-            </p>
+    <div className="text-center w-full">
+      <details className="group mx-auto max-w-sm">
+        <summary className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground select-none list-none [&::-webkit-details-marker]:hidden">
+          <Umbrella className="size-3.5" />
+          <span>Deload / Holiday Mode</span>
+          {isDeloadActive && <span className="size-1.5 rounded-full bg-amber-400 inline-block ml-1" />}
+        </summary>
+
+        <div className="mt-3 rounded-xl border border-border/60 bg-surface-2/40 p-4 text-left animate-in fade-in zoom-in-95">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-foreground">Status:</span>
+            <span
+              className={
+                isDeloadActive ? "text-amber-400 font-medium" : "text-muted-foreground"
+              }
+            >
+              {isDeloadActive ? "Active (+7d Roadmap Shift)" : "Standard Execution"}
+            </span>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-2">
+            Use this when traveling or sick to pause routine tracking and shift schedule offsets.
+          </p>
+
+          <div className="mt-3">
+            <button
+              onClick={() => {
+                toggleDeloadWeek();
+                window.location.reload();
+              }}
+              className={`w-full h-8 text-xs font-medium transition-colors rounded-md border ${
+                isDeloadActive
+                  ? "bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30"
+                  : "text-secondary-foreground hover:bg-secondary/80 border-border"
+              }`}
+            >
+              {isDeloadActive ? "Undo Deload" : "Mark Deload Week"}
+            </button>
           </div>
         </div>
-
-        <Button
-          variant={isDeload ? "default" : "outline"}
-          size="sm"
-          onClick={toggleDeload}
-          className={`gap-1.5 shrink-0 ${isDeload ? "bg-amber-500 hover:bg-amber-600 text-black font-semibold" : ""}`}
-        >
-          <Umbrella className="size-4" />
-          {isDeload ? "Active" : "Enable"}
-        </Button>
-      </div>
-
-      {notification && (
-        <div className="flex items-center gap-2 rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-400 animate-in fade-in slide-in-from-top-1">
-          <CheckCircle2 className="size-4 shrink-0 text-amber-400" />
-          <span>{notification}</span>
-        </div>
-      )}
+      </details>
     </div>
   );
 }

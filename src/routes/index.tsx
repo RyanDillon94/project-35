@@ -7,6 +7,7 @@ import { HevyCard } from "@/components/p35/hevy-card";
 import { CoachDrawer } from "@/components/p35/coach-drawer";
 import { Roadmap } from "@/components/p35/roadmap";
 import { DataBackupCard } from "@/components/p35/data-backup-card";
+import { FinaliseWeekBanner } from "@/components/p35/finalise-week-banner";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { TestModePanel } from '../components/TestModePanel';
 import { getDeloadOffset, toggleDeloadWeek } from '@/utils/dateUtils';
@@ -45,6 +46,8 @@ function Dashboard({ userId }: { userId: string }) {
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
       <TestModePanel />
+      
+      <FinaliseWeekBanner userId={userId} />
       
       {/* Permanent Deload Toggle */}
       <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card/50 text-xs">

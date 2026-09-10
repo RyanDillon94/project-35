@@ -7,10 +7,10 @@ import { HevyCard } from "@/components/p35/hevy-card";
 import { CoachDrawer } from "@/components/p35/coach-drawer";
 import { Roadmap } from "@/components/p35/roadmap";
 import { DataBackupCard } from "@/components/p35/data-backup-card";
+import { DeloadCard } from "@/components/p35/deload-card";
 import { FinaliseWeekBanner } from "@/components/p35/finalise-week-banner";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { TestModePanel } from '../components/TestModePanel';
-import { getDeloadOffset, toggleDeloadWeek } from '@/utils/dateUtils';
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,33 +41,12 @@ function Index() {
 function Dashboard({ userId }: { userId: string }) {
   const { entries, save } = useWeighIns(userId);
   const { hevyApiKey, workout, update } = useUserSettings(userId);
-  const isDeloadActive = getDeloadOffset() > 0;
 
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
       <TestModePanel />
       
       <FinaliseWeekBanner userId={userId} />
-      
-      {/* Permanent Deload Toggle */}
-      <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-card/50 text-xs">
-        <div>
-          <span className="font-semibold text-foreground">Status Mode: </span>
-          <span className={isDeloadActive ? "text-amber-400 font-medium" : "text-muted-foreground"}>
-            {isDeloadActive ? "Deload Active (+7d Roadmap Shift)" : "Standard Execution"}
-          </span>
-        </div>
-        <button 
-          onClick={toggleDeloadWeek}
-          className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-            isDeloadActive 
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30' 
-              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-          }`}
-        >
-          {isDeloadActive ? 'Undo Deload' : 'Mark Deload Week'}
-        </button>
-      </div>
 
       <DashboardHeader />
       <NonNegotiables userId={userId} />
@@ -89,7 +68,13 @@ function Dashboard({ userId }: { userId: string }) {
           &ldquo;Only cunts drink on weekdays... Don&apos;t be a cunt.&rdquo;
         </p>
       </div>
-      <DataBackupCard />
+
+      {/* Footer Management Section */}
+      <div className="flex flex-col gap-3 pt-4 border-t border-border/40">
+        <DeloadCard />
+        <DataBackupCard />
+      </div>
+
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
     </main>
   );

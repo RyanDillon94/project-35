@@ -6,7 +6,7 @@ export function DeloadCard() {
   const isDeloadActive = getDeloadOffset() > 0;
 
   return (
-    <div className="text-center">
+    <div className="text-center w-full">
       <details className="group mx-auto max-w-sm">
         <summary className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground select-none list-none [&::-webkit-details-marker]:hidden">
           <Umbrella className="size-3.5" />
@@ -14,7 +14,7 @@ export function DeloadCard() {
           {isDeloadActive && <span className="size-1.5 rounded-full bg-amber-400 inline-block ml-1" />}
         </summary>
 
-        <div className="mt-4 rounded-xl border border-border/60 bg-surface-2/40 p-4 space-y-3 text-left animate-in fade-in zoom-in-95">
+        <div className="mt-3 rounded-xl border border-border/60 bg-surface-2/40 p-4 space-y-3 text-left animate-in fade-in zoom-in-95">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-foreground">Status:</span>
             <span className={isDeloadActive ? "text-amber-400 font-medium" : "text-muted-foreground"}>

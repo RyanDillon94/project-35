@@ -20,14 +20,19 @@ export function DeloadCard() {
       setIsDeload(activeNow);
 
       if (activeNow) {
-        toast.success("Deload / Holiday Mode active (+7d Roadmap Shift).");
+        toast.success("Deload Week Activated", {
+          description: "Schedule offsets and standards have been adjusted for recovery.",
+          duration: 4000,
+        });
       } else {
-        toast.info("Deload mode turned off. Standard execution resumed.");
+        toast.info("Deload Week Deactivated", {
+          description: "Full standard execution has been resumed.",
+          duration: 4000,
+        });
       }
 
-      setTimeout(() => {
-        window.location.reload();
-      }, 800);
+      // Dispatch a custom event so other components can catch the state change without a full reload
+      window.dispatchEvent(new Event("storage"));
     } catch {
       toast.error("Failed to update deload state.");
     }
@@ -44,7 +49,7 @@ export function DeloadCard() {
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
           <p className="text-xs text-muted-foreground truncate">
-            {isDeload ? "Active — (+7d Roadmap Shift)" : "Standard mode active"}
+            {isDeload ? "Active — Deload Week" : "Standard mode active"}
           </p>
         </div>
       </div>

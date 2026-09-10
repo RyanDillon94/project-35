@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
-import { PalmTree, Umbrella } from "lucide-react";
+import { Palmtree, Umbrella } from "lucide-react";
 import { toast } from "sonner";
 
 export function DeloadCard() {
@@ -20,7 +20,7 @@ export function DeloadCard() {
     toggleDeloadWeek();
 
     const msg = willBeActive
-      ? "Deload Week Activated"
+      ? "Deload Week Activated (+7d Roadmap Shift)"
       : "Deload Week Deactivated";
     localStorage.setItem("p35_toast_msg", msg);
 
@@ -30,11 +30,11 @@ export function DeloadCard() {
   return (
     <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <PalmTree className={`size-5 shrink-0 ${isDeloadActive ? "text-amber-500 animate-pulse" : "text-primary"}`} />
+        <Palmtree className={`size-5 shrink-0 ${isDeloadActive ? "text-amber-500 animate-pulse" : "text-primary"}`} />
         <div className="min-w-0 w-full">
           <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
           <p className="text-xs text-muted-foreground truncate w-full">
-            {isDeloadActive ? "Active" : "Standard Execution"}
+            {isDeloadActive ? "Active (+7d Roadmap Shift)" : "Standard Execution"}
           </p>
         </div>
       </div>

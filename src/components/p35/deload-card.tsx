@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { Umbrella, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Umbrella } from "lucide-react";
 import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
 
 export function DeloadCard() {
   const [isDeload, setIsDeload] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     try {
@@ -14,33 +15,31 @@ export function DeloadCard() {
   }, []);
 
   const toggleDeload = () => {
-    try {
-      // Toggle the actual date offset logic
-      toggleDeloadWeek();
-      const activeNow = getDeloadOffset() > 0;
-      setIsDeload(activeNow);
+    startTransition(() => {
+      try {
+        toggleDeloadWeek();
+        const activeNow = getDeloadOffset() > 0;
+        setIsDeload(activeNow);
 
-      // Set a persistent local message right in the card
-      if (activeNow) {
-        setNotification("Deload Week Activated (+7d Shift)");
-      } else {
-        setNotification("Deload Week Deactivated");
+        if (activeNow) {
+          setNotification("Deload Week Activated (+7d Shift)");
+        } else {
+          setNotification("Deload Week Deactivated");
+        }
+
+        setTimeout(() => {
+          setNotification(null);
+        }, 4000);
+      } catch {
+        setNotification("Failed to update deload state");
       }
-
-      // Keep the notification banner visible for a solid 4 seconds
-      setTimeout(() => {
-        setNotification(null);
-      }, 4000);
-    } catch {
-      setNotification("Failed to update deload state");
-    }
+    });
   };
 
   return (
     <div className="flex flex-col w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-3 min-w-0 pr-2">
-          <Umbrella className={`size-5 shrink-0 ${isDeload ? "text-amber-500 animate-pulse" : "text-primary"}`} />
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
             <p className="text-xs text-muted-foreground truncate">
@@ -55,6 +54,7 @@ export function DeloadCard() {
           onClick={toggleDeload}
           className={`gap-1.5 shrink-0 ${isDeload ? "bg-amber-500 hover:bg-amber-600 text-black font-semibold" : ""}`}
         >
+          <Umbrella className="size-4" />
           {isDeload ? "Active" : "Enable"}
         </Button>
       </div>

@@ -20,17 +20,17 @@ export function DeloadCard() {
       setIsDeload(activeNow);
 
       if (activeNow) {
-        setStatusMessage("Deload Week Activated (+7d Offset)");
+        setStatusMessage("Deload Week Activated");
       } else {
         setStatusMessage("Deload Week Deactivated");
       }
 
-      // Hide the inline confirmation message after 4 solid seconds
+      // Hide the status banner after 4 solid seconds
       setTimeout(() => {
         setStatusMessage(null);
       }, 4000);
 
-      // Dispatch event to softly notify other components
+      // Soft trigger for other components to re-render without a full page reload
       window.dispatchEvent(new Event("storage"));
     } catch {
       setStatusMessage("Failed to update deload state");

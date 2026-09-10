@@ -9,7 +9,7 @@ export function DeloadCard() {
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <Umbrella className={`size-5 shrink-0 ${isDeloadActive ? "text-amber-500 animate-pulse" : "text-primary"}`} />
         <div className="min-w-0 w-full">
-          <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
+          <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday testMode</p>
           <p className="text-xs text-muted-foreground truncate w-full">
             {isDeloadActive ? "Active (+7d Roadmap Shift)" : "Standard Execution"}
           </p>

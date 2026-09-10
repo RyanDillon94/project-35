@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { BatteryCharging, BatteryLow } from "lucide-react";
+import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
 import { toast } from "sonner";
 
 export function DeloadCard() {
@@ -8,32 +9,27 @@ export function DeloadCard() {
 
   useEffect(() => {
     try {
-      const active = 
-        localStorage.getItem("p35_is_deload") === "true" || 
-        localStorage.getItem("p35_deload_mode") === "true";
-      setIsDeload(active);
+      setIsDeload(getDeloadOffset() > 0);
     } catch {}
   }, []);
 
   const toggleDeload = () => {
-    const next = !isDeload;
-    setIsDeload(next);
     try {
-      localStorage.setItem("p35_is_deload", String(next));
-      localStorage.setItem("p35_deload_mode", String(next));
-      
-      if (next) {
-        toast.success("Deload / Holiday Mode active. Refreshing standards...");
+      toggleDeloadWeek();
+      const activeNow = getDeloadOffset() > 0;
+      setIsDeload(activeNow);
+
+      if (activeNow) {
+        toast.success("Deload / Holiday Mode active (+7d Roadmap Shift).");
       } else {
-        toast.info("Deload mode turned off. Resuming standard...");
+        toast.info("Deload mode turned off. Standard execution resumed.");
       }
 
-      // Small delay to let the toast show, then reload the page so all components and dates recalculate
       setTimeout(() => {
         window.location.reload();
       }, 800);
     } catch {
-      toast.error("Failed to save deload state.");
+      toast.error("Failed to update deload state.");
     }
   };
 
@@ -48,7 +44,7 @@ export function DeloadCard() {
         <div className="min-w-0">
           <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
           <p className="text-xs text-muted-foreground truncate">
-            {isDeload ? "Active — Standards relaxed for recovery or travel" : "Standard mode active"}
+            {isDeload ? "Active — (+7d Roadmap Shift)" : "Standard mode active"}
           </p>
         </div>
       </div>

@@ -5,12 +5,22 @@ import { PHASES } from "@/lib/project35";
 import { getDeloadOffset } from "@/utils/dateUtils";
 import { Calendar, Map } from "lucide-react";
 
-function formatBlockWindow(startIso: string, endIso: string, offsetDays: number): string {
-  const [sy, sm, sd] = startIso.split("-").map(Number);
-  const [ey, em, ed] = endIso.split("-").map(Number);
-  
+function getShiftedBlockDates(blockStart: string, blockEnd: string, offsetDays: number) {
+  const [sy, sm, sd] = blockStart.split("-").map(Number);
+  const [ey, em, ed] = blockEnd.split("-").map(Number);
+
   const start = new Date(Date.UTC(sy, sm - 1, sd));
-  const end = new Date(Date.UTC(ey, em - 1, ed + offsetDays));
+  const end = new Date(Date.UTC(ey, em - 1, ed));
+
+  // Shift both start and end dates forward by the deload offset
+  start.setUTCDate(start.getUTCDate() + offsetDays);
+  end.setUTCDate(end.getUTCDate() + offsetDays);
+
+  return { start, end };
+}
+
+function formatBlockWindow(startIso: string, endIso: string, offsetDays: number): string {
+  const { start, end } = getShiftedBlockDates(startIso, endIso, offsetDays);
 
   const startStr = start.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -32,11 +42,8 @@ function getPhaseWindow(phase: (typeof PHASES)[number], offsetDays: number): str
   const firstBlock = phase.blocks[0];
   const lastBlock = phase.blocks[phase.blocks.length - 1];
   
-  const [sy, sm, sd] = firstBlock.start.split("-").map(Number);
-  const [ey, em, ed] = lastBlock.end.split("-").map(Number);
-
-  const start = new Date(Date.UTC(sy, sm - 1, sd));
-  const end = new Date(Date.UTC(ey, em - 1, ed + offsetDays));
+  const { start } = getShiftedBlockDates(firstBlock.start, firstBlock.end, offsetDays);
+  const { end } = getShiftedBlockDates(lastBlock.start, lastBlock.end, offsetDays);
 
   const startStr = start.toLocaleDateString("en-GB", {
     month: "short",

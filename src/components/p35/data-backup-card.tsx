@@ -19,14 +19,14 @@ export function DataBackupCard() {
   };
 
   return (
-    <div className="mt-8 border-t border-border/40 pt-6 pb-12 text-center">
+    <div className="text-center w-full">
       <details className="group mx-auto max-w-sm">
         <summary className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground select-none list-none [&::-webkit-details-marker]:hidden">
           <ShieldCheck className="size-3.5" />
           <span>Local Storage & Backups</span>
         </summary>
 
-        <div className="mt-4 rounded-xl border border-border/60 bg-surface-2/40 p-4 space-y-3 text-left animate-in fade-in zoom-in-95">
+        <div className="mt-3 rounded-xl border border-border/60 bg-surface-2/40 p-4 space-y-3 text-left animate-in fade-in zoom-in-95">
           <p className="text-xs text-muted-foreground">
             All data lives entirely on this device. Create an offline snapshot or restore a previous export.
           </p>

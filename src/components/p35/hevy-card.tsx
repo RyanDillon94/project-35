@@ -50,7 +50,6 @@ export function HevyCard({
       localStorage.setItem("p35_hevy_api_key", cleanKey);
       setActiveKey(cleanKey);
       
-      // Attempt cloud update in background if available, but never block
       if (onSaveKey) {
         onSaveKey(cleanKey).catch(() => {});
       }
@@ -149,11 +148,22 @@ export function HevyCard({
                 <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="truncate text-sm font-semibold">{ex.title}</p>
-                    <span className="stat-label shrink-0">{ex.sets.length} sets</span>
+                    <span className="stat-label shrink-0">
+                      {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
+                    </span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {ex.sets
-                      .map((s) => `${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`)
+                      .map((s) => {
+                        // Handle distance/duration cardio sets
+                        if (s.distanceMeters != null || s.durationSeconds != null) {
+                          const distKm = s.distanceMeters ? `${(s.distanceMeters / 1000).toFixed(2)} km` : null;
+                          const durMins = s.durationSeconds ? `${Math.floor(s.durationSeconds / 60)}m ${s.durationSeconds % 60}s` : null;
+                          return [distKm, durMins].filter(Boolean).join(" - ") || "Completed";
+                        }
+                        // Handle standard weightlifting sets
+                        return `${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`;
+                      })
                       .join("  \u00b7  ")}
                   </p>
                   {lastSet?.rpe != null && (

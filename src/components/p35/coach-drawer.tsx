@@ -94,7 +94,6 @@ async function callGemini(
 ) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
-  // Map history to Gemini content structure
   const contents = [
     ...history.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",

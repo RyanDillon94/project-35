@@ -5,7 +5,7 @@ export const TARGET_DATE = new Date("2029-11-01T00:00:00Z");
 export const DAILY_TARGETS = {
   caloriesMin: 2000,
   caloriesMax: 2400,
-  protein: 200,
+  protein: 180,
   steps: 12500,
   routine: "6:00 AM Iron → 7:00 AM Dog Walk",
 };
@@ -56,7 +56,7 @@ export const PHASES: PhaseDef[] = [
         focus: ["Habit", "Deficit"],
         bullets: [
           "Non-negotiable 6:00 AM lift, five days a week of showing up",
-          "2,000–2,400 kcal, 200g+ protein, 12,500 steps daily",
+          "2,000–2,400 kcal, 180g+ protein, 12,500 steps daily",
           "Friday weekly average weight is the only scale number that counts",
         ],
         blockHabits: [
@@ -298,7 +298,7 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
 
   const proteinHabit: HabitDefinition = {
     key: "protein",
-    label: "200g+ Protein Banked",
+    label: "Protein Target Hit (${DAILY_TARGETS.protein}g+)" 
     sublabel: "Muscle Retention & Recovery",
   };
 

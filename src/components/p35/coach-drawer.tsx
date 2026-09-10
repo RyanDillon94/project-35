@@ -76,11 +76,15 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
           .map((s: any) => {
             const kmVal = s.distance ?? s.km ?? s.distanceMeters;
             const timeVal = s.time ?? s.durationSeconds ?? s.duration;
+            
             if (kmVal != null || timeVal != null) {
-              return [timeVal, kmVal != null ? `${kmVal} km` : null].filter(Boolean).join(" - ");
+              const kmString = kmVal != null ? `${kmVal} km` : null;
+              const timeString = timeVal != null ? `${timeVal}` : null;
+              return [timeString, kmString ? `(${kmString})` : null].filter(Boolean).join(" ");
             }
+
             return `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}${
-              s.rpe != null ? ` @RPE${s.rpe}` : ""
+              s.rpe != ` undefined` && s.rpe != null ? ` @RPE${s.rpe}` : ""
             }`;
           })
           .join(", ");
@@ -95,7 +99,6 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   }
   return lines.join("\n");
 }
-
 
 async function callGemini(
   apiKey: string,

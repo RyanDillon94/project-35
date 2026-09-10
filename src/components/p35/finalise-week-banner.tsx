@@ -2,15 +2,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getActiveHabits, todayKey } from "@/lib/project35";
+import { askCoach } from "@/lib/coach.functions"; // Pointing to your server function
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
-
-const COACH_SYSTEM_PROMPT = `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
-Rules:
-- Celebrate only earned wins, briefly. No hype, no filler, no emoji.
-- Tie advice to the athlete's targets: 2,000-2,400 kcal, 200g+ protein, 12,500 steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.
-- Kilograms in, kilograms out for lifts; pounds for bodyweight.
-- Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
 
 export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -30,13 +24,11 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const today = new Date(todayKey() + "T00:00:00Z");
     const isSunday = today.getUTCDay() === 0;
 
-    // Calculate active week number from Project 35 start (2026-09-07)
     const startDate = new Date("2026-09-07T00:00:00Z");
     const diffTime = Math.abs(today.getTime() - startDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const currentWeekNumber = Math.max(1, Math.ceil(diffDays / 7));
     
-    // Every 4th week is a photo checkpoint week
     const isPhotoWeek = isSunday && currentWeekNumber % 4 === 0;
 
     const habitStats: Record<string, { label: string; completed: number; total: number; isWeekdayOnly?: boolean }> = {};
@@ -44,7 +36,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     let totalCompletedChecks = 0;
     const journals: string[] = [];
 
-    // First pass: collect completions and initialize stats structures
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
@@ -93,7 +84,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
     }
 
-    // Second pass: enforce exact totals (5 for weekday routines, 7 for daily items)
     const finalizedBreakdown = Object.values(habitStats).map((stat) => {
       const total = stat.isWeekdayOnly ? 5 : 7;
       const completed = Math.min(stat.completed, total);
@@ -126,13 +116,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const generateAiSummary = async () => {
     if (!summaryData) return;
     
-    const apiKey = localStorage.getItem("p35_gemini_api_key");
-    if (!apiKey) {
-      toast.error("Add your Gemini API key first.");
-      setLoadingAi(false);
-      return;
-    }
-
     setLoadingAi(true);
     try {
       const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
@@ -140,38 +123,23 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         .map((h) => `- ${h.label}: ${h.completed}/${h.total}`)
         .join("\n");
 
-      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}`;
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = `Review my completed week. Here is my performance data and my daily journal notes:\n\n${journalText}\n\nProvide a sharp, direct weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.`;
+      const userPrompt = "Review my completed week based on my performance data and journal notes. Provide a sharp, direct weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.";
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [
-              {
-                text: `${COACH_SYSTEM_PROMPT}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
-              },
-            ],
-          },
-          contents: [
-            { role: "user", parts: [{ text: userPrompt }] }
-          ],
-        }),
+      // Call the server function directly using the correct OpenAI-gateway format
+      const response = await askCoach({
+        data: {
+          messages: [{ role: "user", content: userPrompt }],
+          context: contextBundle,
+        },
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `Gemini request failed (${res.status})`);
+      if (!response?.reply) {
+        throw new Error("Coach returned an empty response.");
       }
 
-      const data = await res.json();
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!reply) throw new Error("No response generated by Gemini.");
-
-      setSummaryData((prev) => (prev ? { ...prev, aiSummary: reply.trim() } : null));
+      setSummaryData((prev) => (prev ? { ...prev, aiSummary: response.reply.trim() } : null));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate AI weekly summary.");
     } finally {
@@ -227,14 +195,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 </div>
               )}
 
-              {/* Overall Score Pill */}
               <div className="rounded-lg border border-border bg-surface-2/60 p-4 text-center space-y-1">
                 <p className="stat-label">You were on form for</p>
                 <p className="font-display text-3xl font-bold text-primary">{summaryData.overallPercentage}%</p>
                 <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total checks)</p>
               </div>
 
-              {/* Habit Breakdown List */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Non-Negotiables Breakdown</p>
                 <div className="space-y-1.5 rounded-lg border border-border bg-surface-2/40 p-3">
@@ -247,7 +213,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 </div>
               </div>
 
-              {/* AI Synthesized Journal & Verdict Card */}
               <div className="rounded-lg border border-primary/30 bg-surface-2/60 p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">

@@ -145,15 +145,14 @@ export function HevyCard({
             {displayWorkout.exercises.map((ex, i) => {
               const lastSet = ex.sets[ex.sets.length - 1];
               return (
-                <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3 space-y-1.5">
+                <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="truncate text-sm font-semibold">{ex.title}</p>
                     <span className="stat-label shrink-0">
                       {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
                     </span>
                   </div>
-                  
-                  <div className="space-y-1 pt-0.5">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     {ex.sets.map((s, sIdx) => {
                       let setText = "";
                       if (s.distanceMeters != null || s.durationSeconds != null) {
@@ -165,16 +164,15 @@ export function HevyCard({
                       }
 
                       return (
-                        <div key={sIdx} className="flex items-center gap-2 text-xs text-muted-foreground pl-1">
-                          <span className="size-1.5 rounded-full bg-primary/60 shrink-0" />
+                        <div key={sIdx} className="flex items-center gap-2">
+                          {sIdx > 0 && <span className="size-1 rounded-full bg-primary/60 shrink-0" />}
                           <span>{setText}</span>
                         </div>
                       );
                     })}
                   </div>
-
                   {lastSet?.rpe != null && (
-                    <p className="pt-1 text-xs font-medium text-primary">
+                    <p className="mt-1.5 text-xs font-medium text-primary">
                       Final set RPE: {lastSet.rpe}
                     </p>
                   )}

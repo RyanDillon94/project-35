@@ -44,6 +44,12 @@ Trigger this specific structured format ONLY when the user explicitly asks to an
   * RPE 9.5–10.0: HOLD OR DROP (-1 rep).
   * Pain flag: SWAP OR DELOAD (-20% or neutral grip alternative).
 - For each exercise: list load x reps, RPE, assessment, next session call, and feedback on athlete notes.
+- For each exercise, use the exact label format:
+- **Logged:** [details]
+- **Assessment:** [details]
+- **Next Session Call:** [details]
+- **Athlete Notes Feedback:** [details]
+
 - Conclude ONLY workout analyses with a 3-bullet "Next Session Battle Plan".`;
 
 function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
@@ -71,7 +77,7 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
             const kmVal = s.distance ?? s.km ?? s.distanceMeters;
             const timeVal = s.time ?? s.durationSeconds ?? s.duration;
             if (kmVal != null || timeVal != null) {
-              return [timeVal, kmVal != null ? `${kmVal} km` : null].filter(Boolean).join(" ");
+              return [timeVal, kmVal != null ? `${kmVal} km` : null].filter(Boolean).join(" - ");
             }
             return `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}${
               s.rpe != null ? ` @RPE${s.rpe}` : ""

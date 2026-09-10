@@ -10,7 +10,7 @@ function formatBlockWindow(startIso: string, endIso: string, offsetDays: number)
   const [ey, em, ed] = endIso.split("-").map(Number);
   
   const start = new Date(Date.UTC(sy, sm - 1, sd));
-  const end = new Date(Date.UTC(ey, em - 1, ed + offsetDays)); // Apply offset to end date
+  const end = new Date(Date.UTC(ey, em - 1, ed + offsetDays));
 
   const startStr = start.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -28,7 +28,6 @@ function formatBlockWindow(startIso: string, endIso: string, offsetDays: number)
   return `${startStr} – ${endStr}`;
 }
 
-// Helper to calculate dynamic phase window including deload offset
 function getPhaseWindow(phase: (typeof PHASES)[number], offsetDays: number): string {
   const firstBlock = phase.blocks[0];
   const lastBlock = phase.blocks[phase.blocks.length - 1];

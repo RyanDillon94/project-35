@@ -67,7 +67,7 @@ export const PHASES: PhaseDef[] = [
         name: "Block 2: The Cut",
         window: "Weeks 13–24",
         start: "2026-11-30",
-        end: "2027-02-21",
+        end: "2027-04-19",
         focus: ["Fat Loss", "Strength Retention"],
         bullets: [
           "Hold strength on the big four while the deficit continues",
@@ -83,7 +83,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 2,
     title: "The Foundation Build",
-    window: "May 2027 – Oct 2027",
+    window: "Apr 2027 – Oct 2027",
     status: "upcoming",
     summary: "Lean bulk with heavy compound hypertrophy.",
     badges: ["Hypertrophy", "Strength"],
@@ -121,7 +121,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 3,
     title: "Athletic Performance",
-    window: "Nov 2027 – Apr 2028",
+    window: "Oct 2027 – Mar 2028",
     status: "upcoming",
     summary: "Work capacity and upper yoke development.",
     badges: ["Conditioning", "Hypertrophy"],
@@ -153,7 +153,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 4,
     title: "Hybrid Balance",
-    window: "May 2028 – Oct 2028",
+    window: "Mar 2028 – Sep 2028",
     status: "upcoming",
     summary: "Conditioning and functional strength held together.",
     badges: ["Conditioning", "Strength"],
@@ -185,7 +185,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 5,
     title: "Peak Density",
-    window: "Nov 2028 – Apr 2029",
+    window: "Sep 2028 – Feb 2029",
     status: "upcoming",
     summary: "Maximum muscle maturity and leanness.",
     badges: ["Hypertrophy", "Strength"],
@@ -217,7 +217,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 6,
     title: "Project 35",
-    window: "May 2029 – Nov 2029",
+    window: "Feb 2029 – Nov 2029",
     status: "upcoming",
     summary: "Permanent identity, peak physique at 35.",
     badges: ["Strength", "Conditioning"],
@@ -313,7 +313,6 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
 
   return [workoutHabit, timeHabit, ...blockSpecificHabits, proteinHabit, caloriesHabit];
 }
-
 
 export function getActiveBlockCountdown(now = getCurrentDate()) {
   const { activePhase, activeBlock } = getActiveBlockDetails(now);

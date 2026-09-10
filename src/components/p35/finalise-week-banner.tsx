@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getActiveHabits, todayKey, NUTRITION_TARGETS, STEP_TARGET } from "@/lib/project35";
+import { 
+  getActiveBlockDetails, 
+  getActiveHabits, 
+  todayKey, 
+  DAILY_TARGETS, 
+  GOAL_WEIGHT 
+} from "@/lib/project35";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
-const COACH_SYSTEM_PROMPT = `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
+function getCoachSystemPrompt() {
+  const { activePhase, activeBlock } = getActiveBlockDetails();
+
+  return `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
 Rules:
 - Celebrate only earned wins, briefly. No hype, no filler, no emoji.
-- Tie advice to the athlete's live targets: ${NUTRITION_TARGETS.calories} kcal, ${NUTRITION_TARGETS.protein} protein, ${STEP_TARGET.toLocaleString()} steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.
+- Athlete Phase Context: Phase ${activePhase.id} (${activePhase.title}) — ${activeBlock.name}. Focus: ${activeBlock.focus.join(", ")}. Phase Summary: ${activePhase.summary}
+- Live Targets: ${DAILY_TARGETS.caloriesMin.toLocaleString()}–${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps.toLocaleString()} steps daily, routine standard: "${DAILY_TARGETS.routine}", target benchmark: ${GOAL_WEIGHT} lbs, arriving at 35 in November 2029 in undeniable shape.
 - Kilograms in, kilograms out for lifts; pounds for bodyweight.
 - Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
+}
 
 function FormattedSynthesis({ text }: { text: string }) {
   return (
@@ -177,7 +188,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           systemInstruction: {
             parts: [
               {
-                text: `${COACH_SYSTEM_PROMPT}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
+                text: `${getCoachSystemPrompt()}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
               },
             ],
           },

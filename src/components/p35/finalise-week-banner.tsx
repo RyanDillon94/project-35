@@ -5,6 +5,44 @@ import { getActiveHabits, todayKey } from "@/lib/project35";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
+const COACH_SYSTEM_PROMPT = `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
+Rules:
+- Celebrate only earned wins, briefly. No hype, no filler, no emoji.
+- Tie advice to the athlete's targets: 2,000-2,400 kcal, 200g+ protein, 12,500 steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.
+- Kilograms in, kilograms out for lifts; pounds for bodyweight.
+- Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
+
+function FormattedSynthesis({ text }: { text: string }) {
+  return (
+    <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+      {text.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+
+        // Check if it's a standalone header line wrapped in **
+        if (trimmed.startsWith("**") && trimmed.endsWith("**") && !trimmed.slice(2, -2).includes("**")) {
+          return (
+            <p key={i} className="font-bold text-primary pt-2 first:pt-0 text-sm">
+              {trimmed.slice(2, -2)}
+            </p>
+          );
+        }
+
+        // Clean up markdown bold markers for regular lines/bullets
+        const formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, "$1");
+        const isBullet = formattedLine.startsWith("*") || formattedLine.startsWith("-");
+        const cleanText = isBullet ? formattedLine.replace(/^[*-\s]+/, "• ") : formattedLine;
+
+        return (
+          <p key={i} className={isBullet ? "pl-2 font-medium text-foreground/90" : ""}>
+            {cleanText}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -141,7 +179,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           systemInstruction: {
             parts: [
               {
-                text: `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.\nRules:\n- Celebrate only earned wins, briefly. No hype, no filler, no emoji.\n- Tie advice to the athlete's targets: 2,000-2,400 kcal, 200g+ protein, 12,500 steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.\n- Kilograms in, kilograms out for lifts; pounds for bodyweight.\n- Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
+                text: `${COACH_SYSTEM_PROMPT}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
               },
             ],
           },
@@ -256,9 +294,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                     <span>Synthesizing journal notes and performance...</span>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {summaryData.aiSummary}
-                  </p>
+                  <FormattedSynthesis text={summaryData.aiSummary} />
                 )}
               </div>
 

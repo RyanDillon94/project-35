@@ -2,9 +2,15 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getActiveHabits, todayKey } from "@/lib/project35";
-import { askCoach } from "@/lib/coach.functions";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
+
+const COACH_SYSTEM_PROMPT = `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
+Rules:
+- Celebrate only earned wins, briefly. No hype, no filler, no emoji.
+- Tie advice to the athlete's targets: 2,000-2,400 kcal, 200g+ protein, 12,500 steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.
+- Kilograms in, kilograms out for lifts; pounds for bodyweight.
+- Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
 
 export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -119,6 +125,15 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
   const generateAiSummary = async () => {
     if (!summaryData) return;
+    
+    // Grab the locally stored Gemini API key from localStorage (matching your coach drawer)
+    const apiKey = localStorage.getItem("p35_gemini_api_key") || localStorage.getItem("gemini_api_key");
+    if (!apiKey) {
+      toast.error("Gemini API key not found. Please configure it in your Coach AI drawer first.");
+      setLoadingAi(false);
+      return;
+    }
+
     setLoadingAi(true);
     try {
       const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
@@ -130,14 +145,33 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       
       const userPrompt = `Review my completed week. Here is my performance data and my daily journal notes:\n\n${journalText}\n\nProvide a sharp, direct weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.`;
 
-      const response = await askCoach({
-        data: {
-          context: contextBundle,
-          messages: [{ role: "user", content: userPrompt }],
-        },
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: `${COACH_SYSTEM_PROMPT}\n\nAthlete Data Context:\n${contextBundle}\n\nUser Request:\n${userPrompt}` }
+              ]
+            }
+          ]
+        }),
       });
 
-      setSummaryData((prev) => (prev ? { ...prev, aiSummary: response.reply } : null));
+      if (!res.ok) {
+        throw new Error(`AI request failed (${res.status})`);
+      }
+
+      const json = await res.json();
+      const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+      if (!reply) {
+        throw new Error("Coach returned an empty response.");
+      }
+
+      setSummaryData((prev) => (prev ? { ...prev, aiSummary: reply } : null));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate AI weekly summary.");
     } finally {
@@ -197,7 +231,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
               <div className="rounded-lg border border-border bg-surface-2/60 p-4 text-center space-y-1">
                 <p className="stat-label">You were on form for</p>
                 <p className="font-display text-3xl font-bold text-primary">{summaryData.overallPercentage}%</p>
-                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total checks)</p>
+                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/${summaryData.totalPossible} total checks)</p>
               </div>
 
               {/* Habit Breakdown List */}
@@ -207,7 +241,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                   {summaryData.habitBreakdown.map((h, idx) => (
                     <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
                       <span className="text-foreground font-medium">{h.label}</span>
-                      <span className="font-semibold text-primary">{h.completed}/{h.total}</span>
+                      <span className="font-semibold text-primary">{h.completed}/${h.total}</span>
                     </div>
                   ))}
                 </div>

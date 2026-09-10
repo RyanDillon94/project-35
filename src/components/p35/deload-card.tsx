@@ -43,11 +43,7 @@ export function DeloadCard() {
         variant="outline"
         size="sm"
         onClick={handleToggle}
-        className={`inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold transition-colors rounded-md border shrink-0 ${
-          isDeloadActive
-            ? "bg-amber-500 text-black border-amber-600 hover:bg-amber-600"
-            : "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
-        }`}
+        className="inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold transition-colors rounded-md border shrink-0 border-border bg-transparent text-secondary-foreground hover:bg-secondary/80"
       >
         <Umbrella className="size-3.5" />
         <span>{isDeloadActive ? "Active" : "Enable"}</span>

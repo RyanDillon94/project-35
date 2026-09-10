@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
-import { Umbrella } from "lucide-react";
+import { PalmTree, Umbrella } from "lucide-react";
 import { toast } from "sonner";
 
 export function DeloadCard() {
@@ -20,7 +20,7 @@ export function DeloadCard() {
     toggleDeloadWeek();
 
     const msg = willBeActive
-      ? "Deload Week Activated (+7d Roadmap Shift)"
+      ? "Deload Week Activated"
       : "Deload Week Deactivated";
     localStorage.setItem("p35_toast_msg", msg);
 
@@ -30,11 +30,11 @@ export function DeloadCard() {
   return (
     <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <Umbrella className={`size-5 shrink-0 ${isDeloadActive ? "text-amber-500 animate-pulse" : "text-primary"}`} />
+        <PalmTree className={`size-5 shrink-0 ${isDeloadActive ? "text-amber-500 animate-pulse" : "text-primary"}`} />
         <div className="min-w-0 w-full">
           <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
           <p className="text-xs text-muted-foreground truncate w-full">
-            {isDeloadActive ? "Active (+7d Roadmap Shift)" : "Standard Execution"}
+            {isDeloadActive ? "Active" : "Standard Execution"}
           </p>
         </div>
       </div>
@@ -45,8 +45,8 @@ export function DeloadCard() {
         onClick={handleToggle}
         className={`inline-flex items-center justify-center gap-1.5 px-3 h-8 text-xs font-semibold transition-colors rounded-md border shrink-0 ${
           isDeloadActive
-            ? "bg-amber-500 text-black border-amber-600 hover:bg-amber-600"
-            : "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            ? "border-amber-500/50 text-amber-400 bg-surface-2 hover:bg-surface-2/80"
+            : "border-border bg-transparent text-secondary-foreground hover:bg-secondary/80"
         }`}
       >
         <Umbrella className="size-3.5" />

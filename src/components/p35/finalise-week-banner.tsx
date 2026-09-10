@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
@@ -66,7 +66,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     aiSummary: string;
   } | null>(null);
 
-  useEffect(() => {
+  const calculateWeekData = useCallback(() => {
     const today = new Date(todayKey() + "T00:00:00Z");
     const isSunday = today.getUTCDay() === 0;
 
@@ -147,7 +147,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100) 
       : 0;
 
-    setSummaryData({
+    setSummaryData((prev) => ({
       isSunday,
       isPhotoWeek,
       totalPossible: totalPossibleChecks,
@@ -155,9 +155,15 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       overallPercentage,
       habitBreakdown: finalizedBreakdown,
       journals,
-      aiSummary: "Tap below to generate your AI weekly journal synthesis and performance verdict.",
-    });
+      aiSummary: prev?.aiSummary && !prev.aiSummary.startsWith("Tap below") 
+        ? prev.aiSummary 
+        : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
+    }));
   }, []);
+
+  useEffect(() => {
+    calculateWeekData();
+  }, [calculateWeekData]);
 
   const generateAiSummary = async () => {
     if (!summaryData) return;
@@ -246,8 +252,10 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       toast.error(`Week locked in at ${overallPct}%. Absolute shambles. Sort your shit out.`);
     } else if (overallPct < 80) {
       toast.error(`Week locked in at ${overallPct}%. Decent base, but you left meat on the bone.`);
+    } else if (overallPct === 100) {
+      toast.success(`Week locked in at 100%. Absolute clinic. Flawless execution.`);
     } else {
-      toast.success(`Week locked in at ${overallPct}%. Standard maintained.`);
+      toast.success(`Week locked in at ${overallPct}%. Smashing it. Standard held.`);
     }
   };
 
@@ -270,8 +278,11 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
         <Dialog open={isOpen} onOpenChange={(open) => {
           setIsOpen(open);
-          if (open && summaryData.aiSummary.startsWith("Tap below")) {
-            void generateAiSummary();
+          if (open) {
+            calculateWeekData();
+            if (summaryData.aiSummary.startsWith("Tap below")) {
+              void generateAiSummary();
+            }
           }
         }}>
           <DialogTrigger asChild>

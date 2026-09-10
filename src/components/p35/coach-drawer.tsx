@@ -67,12 +67,16 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
       ...workout.exercises.map((ex) => {
         const lastSet = ex.sets[ex.sets.length - 1];
         const setStr = ex.sets
-          .map(
-            (s) =>
-              `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}${
-                s.rpe != null ? ` @RPE${s.rpe}` : ""
-              }`,
-          )
+          .map((s: any) => {
+            const kmVal = s.distance ?? s.km ?? s.distanceMeters;
+            const timeVal = s.time ?? s.durationSeconds ?? s.duration;
+            if (kmVal != null || timeVal != null) {
+              return [timeVal, kmVal != null ? `${kmVal} km` : null].filter(Boolean).join(" ");
+            }
+            return `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}${
+              s.rpe != null ? ` @RPE${s.rpe}` : ""
+            }`;
+          })
           .join(", ");
         const rpeStr = lastSet?.rpe != null ? ` | Final set RPE: ${lastSet.rpe}` : "";
         const notesStr = ex.notes ? ` | Notes: "${ex.notes}"` : "";
@@ -85,6 +89,7 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   }
   return lines.join("\n");
 }
+
 
 async function callGemini(
   apiKey: string,

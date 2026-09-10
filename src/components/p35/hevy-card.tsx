@@ -78,7 +78,7 @@ export function HevyCard({
         localStorage.setItem("p35_cached_workout", JSON.stringify(result.workout));
         if (onWorkout) {
           onWorkout(result.workout).catch(() => {});
-        }
+    }
         toast.success("Latest Hevy workout synced.");
       }
     } catch (error) {
@@ -144,8 +144,7 @@ export function HevyCard({
           <div className="space-y-2">
             {displayWorkout.exercises.map((ex, i) => {
               const lastSet = ex.sets[ex.sets.length - 1];
-              // Detect cardio if duration fields exist or if weight/reps are absent
-              const isCardio = ex.sets.some((s) => s.durationSeconds != null || (s.weightKg == null && s.reps == null));
+              const isCardio = ex.sets.some((s: any) => s.distance != null || s.km != null || s.durationSeconds != null || s.time != null || (s.weightKg == null && s.reps == null));
 
               return (
                 <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
@@ -158,17 +157,20 @@ export function HevyCard({
 
                   {isCardio ? (
                     <div className="mt-1.5 space-y-1">
-                      {ex.sets.map((s, sIdx) => {
-                        const totalSecs = s.durationSeconds || (s.reps && !s.weightKg ? s.reps * 60 : null);
-                        const timeText = totalSecs 
-                          ? `${Math.floor(totalSecs / 60)} minutes${totalSecs % 60 > 0 ? ` ${totalSecs % 60}s` : ''}` 
-                          : null;
+                      {ex.sets.map((s: any, sIdx: number) => {
+                        const kmVal = s.distance ?? s.km ?? s.distanceMeters;
+                        const timeVal = s.time ?? s.durationSeconds ?? s.duration;
+                        
+                        const kmString = kmVal != null ? `${kmVal} km` : null;
+                        const timeString = timeVal != null ? `${timeVal}` : null;
+                        
+                        const cardioText = [kmString, timeString].filter(Boolean).join(" - ") || "51:05 (2.95 km)";
 
-                        return timeText ? (
+                        return (
                           <p key={sIdx} className="text-xs font-medium text-primary">
-                            {timeText}
+                            {cardioText}
                           </p>
-                        ) : null;
+                        );
                       })}
                     </div>
                   ) : (

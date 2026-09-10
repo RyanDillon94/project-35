@@ -144,6 +144,8 @@ export function HevyCard({
           <div className="space-y-2">
             {displayWorkout.exercises.map((ex, i) => {
               const lastSet = ex.sets[ex.sets.length - 1];
+              const isCardio = ex.sets.some((s) => s.distanceMeters != null || s.durationSeconds != null || (s.weightKg == null && s.reps == null));
+
               return (
                 <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
                   <div className="flex items-baseline justify-between gap-2">
@@ -152,32 +154,38 @@ export function HevyCard({
                       {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
                     </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    {ex.sets.map((s, sIdx) => {
-                      let setText = "";
-                      if (s.distanceMeters != null || s.durationSeconds != null || (s.weightKg == null && s.reps == null)) {
-                        const distKm = s.distanceMeters ? `${(s.distanceMeters / 1000).toFixed(2)} km` : null;
-                        const durMins = s.durationSeconds ? `${Math.floor(s.durationSeconds / 60)}m ${s.durationSeconds % 60}s` : null;
-                        setText = [distKm, durMins].filter(Boolean).join(" - ") || "Cardio Set";
-                      } else {
-                        setText = `${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`;
-                      }
 
-                      return (
+                  {isCardio ? (
+                    <div className="mt-1.5 space-y-1">
+                      {ex.sets.map((s, sIdx) => {
+                        const distKm = s.distanceMeters ? `${(s.distanceMeters / 1000).toFixed(2)} km` : null;
+                        const durMins = s.durationSeconds ? `${Math.round(s.durationSeconds / 60)} minutes` : null;
+                        const cardioText = [distKm, durMins].filter(Boolean).join(" - ") || "Cardio Session";
+                        return (
+                          <p key={sIdx} className="text-xs font-medium text-primary">
+                            {cardioText}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      {ex.sets.map((s, sIdx) => (
                         <div key={sIdx} className="flex items-center gap-2">
                           {sIdx > 0 && <span className="size-1 rounded-full bg-primary/60 shrink-0" />}
-                          <span>{setText}</span>
+                          <span>{`${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                  {lastSet?.rpe != null && (
+                      ))}
+                    </div>
+                  )}
+
+                  {!isCardio && lastSet?.rpe != null && (
                     <p className="mt-1.5 text-xs font-medium text-primary">
                       Final set RPE: {lastSet.rpe}
                     </p>
                   )}
                   {ex.notes && (
-                    <p className="mt-1 text-xs text-muted-foreground italic">
+                    <p className="mt-1.5 text-xs text-muted-foreground italic leading-relaxed">
                       &ldquo;{ex.notes}&rdquo;
                     </p>
                   )}

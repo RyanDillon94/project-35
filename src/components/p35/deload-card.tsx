@@ -20,7 +20,7 @@ export function DeloadCard() {
     toggleDeloadWeek();
 
     const msg = willBeActive
-      ? "Deload Week Activated (+7d Roadmap Shift)"
+      ? "Deload Week Activated"
       : "Deload Week Deactivated";
     localStorage.setItem("p35_toast_msg", msg);
 

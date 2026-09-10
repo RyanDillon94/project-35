@@ -298,7 +298,7 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
 
   const proteinHabit: HabitDefinition = {
     key: "protein",
-    label: "Protein Target Hit (${DAILY_TARGETS.protein}g+)", 
+    label: `Protein Target Hit (${DAILY_TARGETS.protein}g+)`, 
     sublabel: "Muscle Retention & Recovery",
   };
 

@@ -11,6 +11,8 @@ import { DeloadCard } from "@/components/p35/deload-card";
 import { FinaliseWeekBanner } from "@/components/p35/finalise-week-banner";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { TestModePanel } from '../components/TestModePanel';
+import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({

@@ -1,48 +1,56 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
-import { Umbrella } from "lucide-react";
+import { BatteryCharging, BatteryLow } from "lucide-react";
+import { toast } from "sonner";
 
 export function DeloadCard() {
-  const isDeloadActive = getDeloadOffset() > 0;
+  const [isDeload, setIsDeload] = useState(false);
+
+  useEffect(() => {
+    try {
+      setIsDeload(localStorage.getItem("p35_deload_mode") === "true");
+    } catch {}
+  }, []);
+
+  const toggleDeload = () => {
+    const next = !isDeload;
+    setIsDeload(next);
+    try {
+      localStorage.setItem("p35_deload_mode", String(next));
+      if (next) {
+        toast.success("Deload / Holiday Mode active. Standards adjusted.");
+      } else {
+        toast.info("Deload mode turned off. Full standard resumed.");
+      }
+    } catch {
+      toast.error("Failed to save deload state.");
+    }
+  };
 
   return (
-    <div className="text-center w-full">
-      <details className="group mx-auto max-w-sm">
-        <summary className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground select-none list-none [&::-webkit-details-marker]:hidden">
-          <Umbrella className="size-3.5" />
-          <span>Deload / Holiday Mode</span>
-          {isDeloadActive && <span className="size-1.5 rounded-full bg-amber-400 inline-block ml-1" />}
-        </summary>
-
-        <div className="mt-3 rounded-xl border border-border/60 bg-surface-2/40 p-4 space-y-3 text-left animate-in fade-in zoom-in-95">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-foreground">Status:</span>
-            <span className={isDeloadActive ? "text-amber-400 font-medium" : "text-muted-foreground"}>
-              {isDeloadActive ? "Active (+7d Roadmap Shift)" : "Standard Execution"}
-            </span>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Use this when traveling or sick to pause routine tracking and shift schedule offsets.
+    <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5">
+      <div className="flex items-center gap-3 min-w-0 pr-2">
+        {isDeload ? (
+          <BatteryLow className="size-5 shrink-0 text-amber-500 animate-pulse" />
+        ) : (
+          <BatteryCharging className="size-5 shrink-0 text-primary" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {isDeload ? "Active — Standards relaxed for recovery or travel" : "Standard mode active"}
           </p>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className={`w-full h-8 text-xs font-medium transition-colors ${
-              isDeloadActive 
-                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 hover:bg-amber-500/30' 
-                : 'text-secondary-foreground hover:bg-secondary/80'
-            }`}
-            onClick={() => {
-              toggleDeloadWeek();
-              window.location.reload();
-            }}
-          >
-            {isDeloadActive ? 'Undo Deload' : 'Mark Deload Week'}
-          </Button>
         </div>
-      </details>
+      </div>
+
+      <Button
+        variant={isDeload ? "default" : "outline"}
+        size="sm"
+        onClick={toggleDeload}
+        className={`gap-1.5 shrink-0 ${isDeload ? "bg-amber-500 hover:bg-amber-600 text-black font-semibold" : ""}`}
+      >
+        {isDeload ? "Active" : "Enable"}
+      </Button>
     </div>
   );
 }

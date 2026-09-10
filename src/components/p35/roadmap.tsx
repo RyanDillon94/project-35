@@ -2,20 +2,24 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PHASES } from "@/lib/project35";
+import { getDeloadOffset } from "@/utils/dateUtils";
 import { Calendar, Map } from "lucide-react";
 
-function formatBlockWindow(startIso: string, endIso: string): string {
+function formatBlockWindow(startIso: string, endIso: string, offsetDays: number): string {
   const [sy, sm, sd] = startIso.split("-").map(Number);
   const [ey, em, ed] = endIso.split("-").map(Number);
+  
   const start = new Date(Date.UTC(sy, sm - 1, sd));
-  const end = new Date(Date.UTC(ey, em - 1, ed));
+  const end = new Date(Date.UTC(ey, em - 1, ed + offsetDays)); // Apply offset to end date
 
   const startStr = start.toLocaleDateString("en-GB", {
+    day: "numeric",
     month: "short",
     year: "numeric",
     timeZone: "UTC",
   });
   const endStr = end.toLocaleDateString("en-GB", {
+    day: "numeric",
     month: "short",
     year: "numeric",
     timeZone: "UTC",
@@ -25,6 +29,8 @@ function formatBlockWindow(startIso: string, endIso: string): string {
 }
 
 export function Roadmap() {
+  const offsetDays = getDeloadOffset();
+
   return (
     <section className="panel p-5">
       <div className="flex items-center gap-2">
@@ -81,7 +87,7 @@ export function Roadmap() {
                     </div>
                     <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
                       <Calendar className="size-3.5 shrink-0" />
-                      {formatBlockWindow(block.start, block.end)}
+                      {formatBlockWindow(block.start, block.end, offsetDays)}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {block.focus.map((f) => (

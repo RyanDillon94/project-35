@@ -54,8 +54,15 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
 
       dayHabits.forEach((h) => {
-        // Skip weekday-only habits on weekends so denominators match 5 days instead of 7
-        const isWeekdayOnly = h.key === "workout_complete" || h.key === "early_morning";
+        // Identify weekday-only routines by key or label match
+        const labelLower = h.label.toLowerCase();
+        const isWeekdayOnly = 
+          h.key === "workout_complete" || 
+          h.key === "early_morning" || 
+          labelLower.includes("workout") || 
+          labelLower.includes("6:00 am");
+
+        // Skip weekday-only habits on weekends (denominator becomes 5 instead of 7)
         if (isWeekend && isWeekdayOnly) {
           return;
         }
@@ -176,7 +183,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
               <div className="rounded-lg border border-border bg-surface-2/60 p-4 text-center space-y-1">
                 <p className="stat-label">You were on form for</p>
                 <p className="font-display text-3xl font-bold text-primary">{summaryData.overallPercentage}%</p>
-                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total checks)</p>
+                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/${summaryData.totalPossible} total checks)</p>
               </div>
 
               {/* Habit Breakdown List */}

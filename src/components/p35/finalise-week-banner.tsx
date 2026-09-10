@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getActiveHabits, todayKey } from "@/lib/project35";
+import { askCoach } from "@/lib/coach.functions";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,7 +63,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           labelLower.includes("workout") || 
           labelLower.includes("6:00 am");
 
-        // Skip tracking weekday routines on weekends completely
         if (isWeekend && isWeekdayOnly) {
           return;
         }
@@ -87,10 +87,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
     }
 
-    // Second pass: enforce exact totals (5 for weekday-only routines, 7 for daily nutrition/steps)
+    // Second pass: enforce exact totals (5 for weekday routines, 7 for daily items)
     const finalizedBreakdown = Object.values(habitStats).map((stat) => {
       const total = stat.isWeekdayOnly ? 5 : 7;
-      // Cap completed checks so they never exceed the strict denominator
       const completed = Math.min(stat.completed, total);
       return {
         label: stat.label,
@@ -99,7 +98,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       };
     });
 
-    // Recalculate true total possible checks and completed checks based on clean denominators
     totalPossibleChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.total, 0);
     totalCompletedChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.completed, 0);
 
@@ -123,28 +121,26 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     if (!summaryData) return;
     setLoadingAi(true);
     try {
-      const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No notes logged.";
-      const prompt = `Review my week for Project 35. Overall habit compliance was ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible}). 
-      Here are my daily journal notes from the week:
-      ${journalText}
-      
-      Provide a concise AI weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.`;
+      const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
+      const breakdownText = summaryData.habitBreakdown
+        .map((h) => `- ${h.label}: ${h.completed}/${h.total}`)
+        .join("\n");
 
-      setTimeout(() => {
-        let verdict = "";
-        if (summaryData.overallPercentage === 100) {
-          verdict = "Flawless execution. 100% across the board. Your journal logs reflect absolute discipline and dialing in the routine. This is the undeniable standard.";
-        } else if (summaryData.overallPercentage >= 75) {
-          verdict = `Strong week (${summaryData.overallPercentage}% compliance). Reviewing your journal logs, your mindset is locked in through the cut phase with great momentum heading into the next block.`;
-        } else {
-          verdict = `Compliance slipped to ${summaryData.overallPercentage}%. Looking over your reflections, consistency dropped off. Time to sort your shit out, tighten execution, and lock down the non-negotiables next week.`;
-        }
-        
-        setSummaryData(prev => prev ? { ...prev, aiSummary: verdict } : null);
-        setLoadingAi(false);
-      }, 600);
-    } catch {
-      toast.error("Failed to generate AI weekly summary.");
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}`;
+      
+      const userPrompt = `Review my completed week. Here is my performance data and my daily journal notes:\n\n${journalText}\n\nProvide a sharp, direct weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.`;
+
+      const response = await askCoach({
+        data: {
+          context: contextBundle,
+          messages: [{ role: "user", content: userPrompt }],
+        },
+      });
+
+      setSummaryData((prev) => (prev ? { ...prev, aiSummary: response.reply } : null));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate AI weekly summary.");
+    } finally {
       setLoadingAi(false);
     }
   };
@@ -240,7 +236,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                     <span>Synthesizing journal notes and performance...</span>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
                     {summaryData.aiSummary}
                   </p>
                 )}

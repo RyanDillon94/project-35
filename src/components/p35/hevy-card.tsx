@@ -137,7 +137,7 @@ export function HevyCard({
       {displayWorkout ? (
         <div className="mt-4 space-y-3">
           <div className="rounded-lg border border-border bg-surface-2/60 p-3">
-            <p className="text-sm font-semibold">{displayWorkout.title}</p>
+            <p className="text-sm font-semibold text-primary">{displayWorkout.title}</p>
             <p className="text-xs text-muted-foreground">
               {displayWorkout.startTime ? new Date(displayWorkout.startTime).toLocaleString() : "Date unknown"}
             </p>

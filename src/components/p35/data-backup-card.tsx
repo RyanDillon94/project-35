@@ -89,7 +89,7 @@ export function DataBackupCard() {
         <Download className="size-5 shrink-0 text-primary" />
         <div className="min-w-0 w-full">
           <p className="text-sm font-semibold truncate text-foreground">Local Storage & Backups</p>
-          <p className="text-xs text-muted-foreground truncate w-full">Export or restore your application data</p>
+          <p className="text-xs text-muted-foreground truncate w-full">Export or restore data</p>
         </div>
       </div>
 

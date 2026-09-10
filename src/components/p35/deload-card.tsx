@@ -8,7 +8,6 @@ export function DeloadCard() {
 
   useEffect(() => {
     try {
-      // Check both keys to ensure backward compatibility with app logic
       const active = 
         localStorage.getItem("p35_is_deload") === "true" || 
         localStorage.getItem("p35_deload_mode") === "true";
@@ -20,16 +19,19 @@ export function DeloadCard() {
     const next = !isDeload;
     setIsDeload(next);
     try {
-      // Save to both keys so app logic and UI stay completely in sync
       localStorage.setItem("p35_is_deload", String(next));
       localStorage.setItem("p35_deload_mode", String(next));
       
-      // Dispatch a storage event or trigger if other components listen for it, or just toast
       if (next) {
-        toast.success("Deload / Holiday Mode active. Standards adjusted.");
+        toast.success("Deload / Holiday Mode active. Refreshing standards...");
       } else {
-        toast.info("Deload mode turned off. Full standard resumed.");
+        toast.info("Deload mode turned off. Resuming standard...");
       }
+
+      // Small delay to let the toast show, then reload the page so all components and dates recalculate
+      setTimeout(() => {
+        window.location.reload();
+      }, 800);
     } catch {
       toast.error("Failed to save deload state.");
     }

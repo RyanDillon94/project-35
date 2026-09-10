@@ -111,7 +111,7 @@ export function WeeklyTrendsAnalytics() {
                   <span>Execution Status</span>
                 </p>
                 <p className="text-sm font-semibold text-foreground pt-1">
-                  {averageScore >= 80 ? "Strict Standard" : averageScore >= 50 ? "Building Momentum" : "Needs Rigor"}
+                  {averageScore >= 80 ? "Top form, keep it up!" : averageScore >= 50 ? "Building Momentum, push harder" : "Absolutely shite, switch on!"}
                 </p>
               </div>
             </div>

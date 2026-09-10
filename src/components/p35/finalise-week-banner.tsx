@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { getActiveHabits, todayKey } from "@/lib/project35";
+import { getActiveHabits, todayKey, NUTRITION_TARGETS, STEP_TARGET } from "@/lib/project35";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 const COACH_SYSTEM_PROMPT = `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
 Rules:
 - Celebrate only earned wins, briefly. No hype, no filler, no emoji.
-- Tie advice to the athlete's targets: 2,000-2,400 kcal, 200g+ protein, 12,500 steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.
+- Tie advice to the athlete's live targets: ${NUTRITION_TARGETS.calories} kcal, ${NUTRITION_TARGETS.protein} protein, ${STEP_TARGET.toLocaleString()} steps, 6:00 AM lift, goal weight 190 lbs by end of Phase 1, arriving at 35 in November 2029 in undeniable shape.
 - Kilograms in, kilograms out for lifts; pounds for bodyweight.
 - Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
 
@@ -240,8 +240,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
   };
 
-  const lastLocked = localStorage.getItem("p35_last_locked_week");
-  if (!summaryData || !summaryData.isSunday || lastLocked === todayKey()) {
+  if (!summaryData || !summaryData.isSunday) {
     return null;
   }
 

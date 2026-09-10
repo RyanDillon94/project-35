@@ -43,7 +43,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 1,
     title: "The Clock & The Cut",
-    window: "Sep 2026 – Feb 2027",
+    window: "Sep 2026 – Mar 2027",
     status: "active",
     summary: "Establish the 6:00 AM habit and drop 30 lbs toward 190 lbs.",
     badges: ["Fat Loss", "Discipline"],
@@ -67,7 +67,7 @@ export const PHASES: PhaseDef[] = [
         name: "Block 2: The Cut",
         window: "Weeks 13–24",
         start: "2026-11-30",
-        end: "2027-04-19",
+        end: "2027-02-21",
         focus: ["Fat Loss", "Strength Retention"],
         bullets: [
           "Hold strength on the big four while the deficit continues",
@@ -83,7 +83,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 2,
     title: "The Foundation Build",
-    window: "Apr 2027 – Oct 2027",
+    window: "Feb 2027 – Aug 2027",
     status: "upcoming",
     summary: "Lean bulk with heavy compound hypertrophy.",
     badges: ["Hypertrophy", "Strength"],
@@ -91,8 +91,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: Reverse Diet",
         window: "Weeks 1–12",
-        start: "2027-04-20",
-        end: "2027-07-12",
+        start: "2027-02-22",
+        end: "2027-05-16",
         focus: ["Hypertrophy"],
         bullets: [
           "Calories back to maintenance, then a slow surplus",
@@ -105,8 +105,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: Heavy Accumulation",
         window: "Weeks 13–24",
-        start: "2027-07-13",
-        end: "2027-10-04",
+        start: "2027-05-17",
+        end: "2027-08-08",
         focus: ["Strength"],
         bullets: [
           "Progressive overload on 5–8 rep top sets",
@@ -121,7 +121,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 3,
     title: "Athletic Performance",
-    window: "Oct 2027 – Mar 2028",
+    window: "Aug 2027 – Jan 2028",
     status: "upcoming",
     summary: "Work capacity and upper yoke development.",
     badges: ["Conditioning", "Hypertrophy"],
@@ -129,8 +129,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: Engine Work",
         window: "Weeks 1–12",
-        start: "2027-10-05",
-        end: "2027-12-27",
+        start: "2027-08-09",
+        end: "2027-10-31",
         focus: ["Conditioning"],
         bullets: ["Zone 2 base plus weekly intervals", "Carries and sled work every session"],
         blockHabits: [
@@ -140,8 +140,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: Yoke Build",
         window: "Weeks 13–24",
-        start: "2027-12-28",
-        end: "2028-03-20",
+        start: "2027-11-01",
+        end: "2028-01-23",
         focus: ["Hypertrophy"],
         bullets: ["Traps, delts, upper back triple frequency", "Overhead strength benchmarks"],
         blockHabits: [
@@ -153,7 +153,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 4,
     title: "Hybrid Balance",
-    window: "Mar 2028 – Sep 2028",
+    window: "Jan 2028 – Jul 2028",
     status: "upcoming",
     summary: "Conditioning and functional strength held together.",
     badges: ["Conditioning", "Strength"],
@@ -161,8 +161,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: Strength + Engine",
         window: "Weeks 1–12",
-        start: "2028-03-21",
-        end: "2028-06-12",
+        start: "2028-01-24",
+        end: "2028-04-16",
         focus: ["Strength"],
         bullets: ["Two heavy days, two hybrid days", "Rucking and loaded carries weekly"],
         blockHabits: [
@@ -172,8 +172,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: Field Test",
         window: "Weeks 13–24",
-        start: "2028-06-13",
-        end: "2028-09-04",
+        start: "2028-04-17",
+        end: "2028-07-09",
         focus: ["Conditioning"],
         bullets: ["Benchmark events every four weeks", "Hold body fat in single-to-low teens"],
         blockHabits: [
@@ -185,7 +185,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 5,
     title: "Peak Density",
-    window: "Sep 2028 – Feb 2029",
+    window: "Jul 2028 – Dec 2028",
     status: "upcoming",
     summary: "Maximum muscle maturity and leanness.",
     badges: ["Hypertrophy", "Strength"],
@@ -193,8 +193,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: Density Volume",
         window: "Weeks 1–12",
-        start: "2028-09-05",
-        end: "2028-11-27",
+        start: "2028-07-10",
+        end: "2028-10-01",
         focus: ["Hypertrophy"],
         bullets: ["Highest tolerable volume with clean technique", "Weak-point specialisation"],
         blockHabits: [
@@ -204,8 +204,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: Final Lean",
         window: "Weeks 13–24",
-        start: "2028-11-28",
-        end: "2029-02-19",
+        start: "2028-10-02",
+        end: "2028-12-24",
         focus: ["Fat Loss"],
         bullets: ["Slow controlled cut, zero strength loss", "Full photo and lift audit"],
         blockHabits: [
@@ -217,7 +217,7 @@ export const PHASES: PhaseDef[] = [
   {
     id: 6,
     title: "Project 35",
-    window: "Feb 2029 – Nov 2029",
+    window: "Dec 2028 – Nov 2029",
     status: "upcoming",
     summary: "Permanent identity, peak physique at 35.",
     badges: ["Strength", "Conditioning"],
@@ -225,8 +225,8 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 1: Sharpen",
         window: "Weeks 1–12",
-        start: "2029-02-20",
-        end: "2029-05-15",
+        start: "2028-12-25",
+        end: "2029-03-18",
         focus: ["Peaking"],
         bullets: ["Peak conditioning with full strength intact", "Photo checkpoint every four weeks"],
         blockHabits: [
@@ -236,7 +236,7 @@ export const PHASES: PhaseDef[] = [
       {
         name: "Block 2: Arrive",
         window: "Weeks 13–24",
-        start: "2029-05-16",
+        start: "2029-03-19",
         end: "2029-11-01",
         focus: ["Identity"],
         bullets: ["Maintain the standard indefinitely", "Arrive at 35 in undeniable shape"],

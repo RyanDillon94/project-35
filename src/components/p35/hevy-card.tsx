@@ -155,10 +155,10 @@ export function HevyCard({
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                     {ex.sets.map((s, sIdx) => {
                       let setText = "";
-                      if (s.distanceMeters != null || s.durationSeconds != null) {
+                      if (s.distanceMeters != null || s.durationSeconds != null || (s.weightKg == null && s.reps == null)) {
                         const distKm = s.distanceMeters ? `${(s.distanceMeters / 1000).toFixed(2)} km` : null;
                         const durMins = s.durationSeconds ? `${Math.floor(s.durationSeconds / 60)}m ${s.durationSeconds % 60}s` : null;
-                        setText = [distKm, durMins].filter(Boolean).join(" - ") || "Completed";
+                        setText = [distKm, durMins].filter(Boolean).join(" - ") || "Cardio Set";
                       } else {
                         setText = `${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`;
                       }

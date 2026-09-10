@@ -129,21 +129,40 @@ async function callGemini(
 }
 
 function CoachText({ text }: { text: string }) {
+  // Clean up markdown headers and format sections
+  const cleanedText = text
+    .replace(/^#{1,6}\s+/gm, "") // Strip markdown hashes
+    .replace(/^\s*[*-]\s+/gm, "• ");
+
   return (
-    <>
-      {text
-        .replace(/^\s*[*-]\s+/gm, "• ")
-        .split(/(\*\*[^*]+\*\*)/g)
-        .map((part, i) =>
-          part.startsWith("**") && part.endsWith("**") ? (
-            <strong key={i} className="text-primary">
-              {part.slice(2, -2)}
-            </strong>
-          ) : (
-            <span key={i}>{part}</span>
-          ),
-        )}
-    </>
+    <div className="space-y-1.5 whitespace-pre-wrap">
+      {cleanedText.split("\n").map((line, idx) => {
+        // Check if line looks like a major section header (e.g. ALL CAPS or ends with colon)
+        const isHeader = /^[A-Z\s]{4,}:?$/.test(line.trim()) || line.trim().startsWith("WORKOUT ANALYSIS");
+
+        if (isHeader) {
+          return (
+            <p key={idx} className="font-bold text-primary mt-2">
+              {line.trim()}
+            </p>
+          );
+        }
+
+        return (
+          <p key={idx}>
+            {line.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+              part.startsWith("**") && part.endsWith("**") ? (
+                <strong key={i} className="text-primary font-semibold">
+                  {part.slice(2, -2)}
+                </strong>
+              ) : (
+                <span key={i}>{part}</span>
+              ),
+            )}
+          </p>
+        );
+      })}
+    </div>
   );
 }
 

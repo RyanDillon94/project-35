@@ -96,7 +96,7 @@ export function HevyCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Activity className="size-5 text-primary" />
-          <h2 className="text-lg font-bold">Hevy Integration</h2>
+          <h2 className="text-lg font-bold">Latest Workout</h2>
         </div>
         <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
           <DialogTrigger asChild>

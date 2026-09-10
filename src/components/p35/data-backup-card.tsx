@@ -1,68 +1,121 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { exportDashboardBackup, importDashboardBackup } from "@/lib/p35-cloud";
-import { Download, Upload, ShieldCheck } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export function DataBackupCard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [exporting, setExporting] = useState(false);
 
-  const handleImport = async (file?: File) => {
-    if (!file) return;
-    const success = await importDashboardBackup(file);
-    if (success) {
-      toast.success("Backup restored successfully. Reloading data...");
-      setTimeout(() => window.location.reload(), 800);
-    } else {
-      toast.error("Invalid backup file. Could not restore data.");
+  const handleExport = () => {
+    try {
+      setExporting(true);
+      const backupData: Record<string, string> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("p35_")) {
+          backupData[key] = localStorage.getItem(key) || "";
+        }
+      }
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `project-35-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Backup downloaded successfully.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to export data.");
+    } finally {
+      setExporting(false);
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const backupData = JSON.parse(content);
+
+        if (typeof backupData !== "object" || backupData === null) {
+          throw new Error("Invalid backup file format.");
+        }
+
+        let count = 0;
+        for (const [key, value] of Object.entries(backupData)) {
+          if (key.startsWith("p35_") && typeof value === "string") {
+            localStorage.setItem(key, value);
+            count++;
+          }
+        }
+
+        toast.success(`Successfully restored ${count} keys. Reloading...`);
+        setTimeout(() => window.location.reload(), 1000);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to parse backup file.");
+      } finally {
+        if (e.target) e.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <div className="text-center w-full">
-      <details className="group mx-auto max-w-sm">
-        <summary className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-muted-foreground select-none list-none [&::-webkit-details-marker]:hidden">
-          <ShieldCheck className="size-3.5" />
-          <span>Local Storage & Backups</span>
-        </summary>
+    <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".json"
+        className="hidden"
+      />
 
-        <div className="mt-3 rounded-xl border border-border/60 bg-surface-2/40 p-4 space-y-3 text-left animate-in fade-in zoom-in-95">
-          <p className="text-xs text-muted-foreground">
-            All data lives entirely on this device. Create an offline snapshot or restore a previous export.
-          </p>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 h-8 text-xs gap-1.5"
-              onClick={exportDashboardBackup}
-            >
-              <Download className="size-3.5" /> Export Data
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 h-8 text-xs gap-1.5"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="size-3.5" /> Restore File
-            </Button>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={(e) => {
-              handleImport(e.target.files?.[0]);
-              e.target.value = "";
-            }}
-          />
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <Download className="size-5 shrink-0 text-primary" />
+        <div className="min-w-0 w-full">
+          <p className="text-sm font-semibold truncate text-foreground">Local Storage & Backups</p>
+          <p className="text-xs text-muted-foreground truncate w-full">Export or restore your application data</p>
         </div>
-      </details>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleImportClick}
+          className="gap-1 px-2.5 text-xs"
+          title="Import Backup"
+        >
+          <Upload className="size-3.5" />
+          <span>Import</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          disabled={exporting}
+          className="gap-1 px-2.5 text-xs"
+          title="Export Backup"
+        >
+          <Download className="size-3.5" />
+          <span>Export</span>
+        </Button>
+      </div>
     </div>
   );
 }

@@ -79,23 +79,29 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
     });
   }, [selectedDay, actualToday, currentDateObj]);
 
-  // Weekly Top Form Score (Monday of current week through today)
+  // Weekly Top Form Score (Monday of current selected week through selected day)
   const statsMetric = useMemo(() => {
-    const now = new Date();
-    const currentDay = now.getDay();
-    const daysSinceMonday = currentDay === 0 ? 6 : currentDay - 1;
+    const [y, m, dNum] = selectedDay.split("-").map(Number);
+    const selDate = new Date(Date.UTC(y, m - 1, dNum, 12, 0, 0));
+    
+    // Find Monday of the selected day's week (UTC-safe)
+    const dayOfWeek = selDate.getUTCDay(); // 0 is Sunday, 1 is Monday...
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    
+    const mondayDate = new Date(selDate);
+    mondayDate.setUTCDate(selDate.getUTCDate() - daysSinceMonday);
 
     let totalPossibleChecks = 0;
     let totalCompletedChecks = 0;
 
-    for (let i = 0; i <= daysSinceMonday; i++) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - (daysSinceMonday - i));
-      const k = d.toISOString().slice(0, 10);
-      const dayOfWeek = d.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    // Loop from Monday up to the selected day
+    const loopDate = new Date(mondayDate);
+    while (loopDate.getTime() <= selDate.getTime()) {
+      const k = loopDate.toISOString().slice(0, 10);
+      const loopDayOfWeek = loopDate.getUTCDay();
+      const isWeekend = loopDayOfWeek === 0 || loopDayOfWeek === 6;
 
-      const dayHabits = getActiveHabits(d);
+      const dayHabits = getActiveHabits(loopDate);
       
       const raw = localStorage.getItem(`p35_habits_${k}`);
       let parsedHabits: Record<string, boolean> = {};
@@ -118,18 +124,22 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
         }
 
         totalPossibleChecks++;
+        // If we are looking at the currently selected day in state, use live `habits` state; otherwise read storage
         if (k === selectedDay && habits[h.key]) {
           totalCompletedChecks++;
         } else if (parsedHabits[h.key]) {
           totalCompletedChecks++;
         }
       });
+
+      // Advance loop date by 1 day UTC
+      loopDate.setUTCDate(loopDate.getUTCDate() + 1);
     }
 
     const formScore =
       totalPossibleChecks > 0
         ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100)
-        : 100;
+        : 0;
 
     return { formScore };
   }, [habits, selectedDay]);
@@ -255,7 +265,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
           ref={textareaRef}
           rows={2}
           value={note}
-          placeholder="Log weight, workout reflection, hunger, or thoughts..."
+          placeholder="Log weight, workout reflection, hunger, or thoughts thoughts..."
           onChange={(e) => handleNoteChange(e.target.value)}
           className="w-full min-h-[68px] resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2.5 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
         />

@@ -204,11 +204,13 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
   };
 
-  const handleLockInWeek = () => {
+    const handleLockInWeek = () => {
     const weekKey = `p35_finalised_week_${todayKey()}`;
+    const overallPct = summaryData?.overallPercentage ?? 0;
+    
     const weekArchiveRecord = {
       date: todayKey(),
-      overallPercentage: summaryData?.overallPercentage ?? 0,
+      overallPercentage: overallPct,
       totalCompleted: summaryData?.totalCompleted ?? 0,
       totalPossible: summaryData?.totalPossible ?? 0,
       breakdown: summaryData?.habitBreakdown ?? [],
@@ -218,14 +220,16 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
     localStorage.setItem("p35_last_locked_week", todayKey());
     
-    toast.success("Week locked in and sealed. Outstanding standard.");
+    if (overallPct < 50) {
+      toast.error(`Week locked in at ${overallPct}%. Absolute shambles. Sort your shit out.`);
+    } else if (overallPct < 80) {
+      toast.error(`Week locked in at ${overallPct}%. Decent base, but you left meat on the bone.`);
+    } else {
+      toast.success(`Week locked in at ${overallPct}%. Standard maintained.`);
+    }
+
     setIsOpen(false);
   };
-
-  const lastLocked = localStorage.getItem("p35_last_locked_week");
-  if (!summaryData || !summaryData.isSunday || lastLocked === todayKey()) {
-    return null;
-  }
 
   return (
     <div className="panel border-primary/40 bg-primary/10 p-4 space-y-3">

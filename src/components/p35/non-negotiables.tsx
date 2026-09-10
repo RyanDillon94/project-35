@@ -133,14 +133,14 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
   return (
     <section className="panel p-5 space-y-4">
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Dumbbell className="size-5 text-primary" />
-          <h2 className="text-lg font-bold">Daily Non-Negotiables</h2>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Dumbbell className="size-5 shrink-0 text-primary" />
+          <h2 className="text-base sm:text-lg font-bold truncate">Daily Non-Negotiables</h2>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-            {statsMetric.formScore}% Week Form
+            {statsMetric.formScore}% of week
           </span>
           <span className="font-display text-sm text-primary">
             {done}/{activeHabits.length}

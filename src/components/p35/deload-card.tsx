@@ -1,12 +1,11 @@
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Umbrella } from "lucide-react";
+import { Umbrella, CheckCircle2 } from "lucide-react";
 import { getDeloadOffset, toggleDeloadWeek } from "@/utils/dateUtils";
 
 export function DeloadCard() {
   const [isDeload, setIsDeload] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
 
   useEffect(() => {
     try {
@@ -15,31 +14,31 @@ export function DeloadCard() {
   }, []);
 
   const toggleDeload = () => {
-    startTransition(() => {
-      try {
-        toggleDeloadWeek();
-        const activeNow = getDeloadOffset() > 0;
-        setIsDeload(activeNow);
+    try {
+      toggleDeloadWeek();
+      const activeNow = getDeloadOffset() > 0;
+      setIsDeload(activeNow);
 
-        if (activeNow) {
-          setNotification("Deload Week Activated (+7d Shift)");
-        } else {
-          setNotification("Deload Week Deactivated");
-        }
-
-        setTimeout(() => {
-          setNotification(null);
-        }, 4000);
-      } catch {
-        setNotification("Failed to update deload state");
+      if (activeNow) {
+        setNotification("Deload Week Activated — Updating schedule...");
+      } else {
+        setNotification("Deload Week Deactivated — Restoring standards...");
       }
-    });
+
+      // Small delay so you can read the status banner, then refresh so all components recalculate dates
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } catch {
+      setNotification("Failed to update deload state");
+    }
   };
 
   return (
     <div className="flex flex-col w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-3 min-w-0 pr-2">
+          <Umbrella className={`size-5 shrink-0 ${isDeload ? "text-amber-500 animate-pulse" : "text-primary"}`} />
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate text-foreground">Deload / Holiday Mode</p>
             <p className="text-xs text-muted-foreground truncate">

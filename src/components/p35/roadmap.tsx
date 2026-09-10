@@ -28,6 +28,31 @@ function formatBlockWindow(startIso: string, endIso: string, offsetDays: number)
   return `${startStr} – ${endStr}`;
 }
 
+// Helper to calculate dynamic phase window including deload offset
+function getPhaseWindow(phase: (typeof PHASES)[number], offsetDays: number): string {
+  const firstBlock = phase.blocks[0];
+  const lastBlock = phase.blocks[phase.blocks.length - 1];
+  
+  const [sy, sm, sd] = firstBlock.start.split("-").map(Number);
+  const [ey, em, ed] = lastBlock.end.split("-").map(Number);
+
+  const start = new Date(Date.UTC(sy, sm - 1, sd));
+  const end = new Date(Date.UTC(ey, em - 1, ed + offsetDays));
+
+  const startStr = start.toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const endStr = end.toLocaleDateString("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+  return `${startStr} – ${endStr}`;
+}
+
 export function Roadmap() {
   const offsetDays = getDeloadOffset();
 
@@ -59,7 +84,7 @@ export function Roadmap() {
                   </Badge>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {phase.window} &mdash; {phase.summary}
+                  {getPhaseWindow(phase, offsetDays)} &mdash; {phase.summary}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {phase.badges.map((b) => (

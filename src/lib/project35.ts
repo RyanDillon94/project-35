@@ -286,9 +286,13 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
   const isWeekend = now.getDay() === 0 || now.getDay() === 6;
   const { activeBlock } = getActiveBlockDetails(now);
 
-  const morningHabit: HabitDefinition = isWeekend
-    ? { key: "morning_routine", label: "Morning Dog Walk Completed", sublabel: "Weekend Routine" }
-    : { key: "morning_routine", label: "6:00 AM Gym Session Completed", sublabel: "Weekday Iron" };
+  const workoutHabit: HabitDefinition = isWeekend
+    ? { key: "workout_complete", label: "Weekend Dog Walk Completed", sublabel: "Weekend Routine" }
+    : { key: "workout_complete", label: "Workout Completed", sublabel: "Iron Logged" };
+
+  const timeHabit: HabitDefinition = isWeekend
+    ? { key: "early_start", label: "Morning Routine On Time", sublabel: "Weekend Standard" }
+    : { key: "early_start", label: "Hit at 6:00 AM", sublabel: "The Early Standard" };
 
   const proteinHabit: HabitDefinition = {
     key: "protein",
@@ -307,8 +311,9 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
       ? activeBlock.blockHabits
       : [{ key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Activity Base" }];
 
-  return [morningHabit, ...blockSpecificHabits, proteinHabit, caloriesHabit];
+  return [workoutHabit, timeHabit, ...blockSpecificHabits, proteinHabit, caloriesHabit];
 }
+
 
 export function getActiveBlockCountdown(now = getCurrentDate()) {
   const { activePhase, activeBlock } = getActiveBlockDetails(now);

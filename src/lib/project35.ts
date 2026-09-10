@@ -1,4 +1,4 @@
-import { getCurrentDate } from '../utils/dateUtils';
+import { getCurrentDate, getDeloadOffset } from '../utils/dateUtils';
 
 export const TARGET_DATE = new Date("2029-11-01T00:00:00Z");
 
@@ -255,7 +255,8 @@ export function daysBetween(from: Date, to: Date) {
 export const LONG_TERM_TARGET = "Target: November 2029 — Age 35";
 
 export function getActiveBlockDetails(now = getCurrentDate()) {
-  const nowMs = now.getTime();
+  const offsetDays = getDeloadOffset();
+  const adjustedNowMs = now.getTime() - (offsetDays * 86_400_000);
 
   let activePhase = PHASES[0];
   let activeBlock = PHASES[0].blocks[0];
@@ -263,8 +264,9 @@ export function getActiveBlockDetails(now = getCurrentDate()) {
   for (const phase of PHASES) {
     for (const block of phase.blocks) {
       const startMs = new Date(`${block.start}T00:00:00Z`).getTime();
-      const endMs = new Date(`${block.end}T23:59:59Z`).getTime();
-      if (nowMs >= startMs && nowMs <= endMs) {
+      const endMs = new Date(`${block.end}T23:59:59Z`).getTime() + (offsetDays * 86_400_000);
+      
+      if (adjustedNowMs >= startMs && adjustedNowMs <= endMs) {
         activePhase = phase;
         activeBlock = block;
         break;
@@ -274,13 +276,14 @@ export function getActiveBlockDetails(now = getCurrentDate()) {
 
   const lastPhase = PHASES[PHASES.length - 1];
   const lastBlock = lastPhase.blocks[lastPhase.blocks.length - 1];
-  if (nowMs > new Date(`${lastBlock.end}T23:59:59Z`).getTime()) {
+  if (adjustedNowMs > new Date(`${lastBlock.end}T23:59:59Z`).getTime() + (offsetDays * 86_400_000)) {
     activePhase = lastPhase;
     activeBlock = lastBlock;
   }
 
   return { activePhase, activeBlock };
 }
+
 
 export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
   const isWeekend = now.getDay() === 0 || now.getDay() === 6;

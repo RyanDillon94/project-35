@@ -284,7 +284,6 @@ export function getActiveBlockDetails(now = getCurrentDate()) {
   return { activePhase, activeBlock };
 }
 
-
 export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
   const isWeekend = now.getDay() === 0 || now.getDay() === 6;
   const { activeBlock } = getActiveBlockDetails(now);
@@ -319,9 +318,11 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
 
 export function getActiveBlockCountdown(now = getCurrentDate()) {
   const { activePhase, activeBlock } = getActiveBlockDetails(now);
+  const offsetDays = getDeloadOffset();
 
-  const start = new Date(`${activeBlock.start}T00:00:00Z`);
-  const end = new Date(`${activeBlock.end}T23:59:59Z`);
+  // Shift start and end dates forward by the active deload offset
+  const start = new Date(new Date(`${activeBlock.start}T00:00:00Z`).getTime());
+  const end = new Date(new Date(`${activeBlock.end}T23:59:59Z`).getTime() + (offsetDays * 86_400_000));
 
   const total = Math.max(1, daysBetween(start, end));
   const daysLeft = Math.max(0, daysBetween(now, end));
@@ -331,9 +332,12 @@ export function getActiveBlockCountdown(now = getCurrentDate()) {
   const currentWeek = Math.min(totalWeeks, Math.floor(elapsed / 7) + 1);
   const progress = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string, addOffset = false) => {
     const [y, m, d] = dateStr.split("-").map(Number);
     const dateObj = new Date(Date.UTC(y, m - 1, d));
+    if (addOffset) {
+      dateObj.setUTCDate(dateObj.getUTCDate() + offsetDays);
+    }
     return dateObj.toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
@@ -347,7 +351,7 @@ export function getActiveBlockCountdown(now = getCurrentDate()) {
     blockName: activeBlock.name,
     window: activeBlock.window,
     goal: activeBlock.bullets[0] || activePhase.summary,
-    dateRange: `${formatDate(activeBlock.start)} — ${formatDate(activeBlock.end)}`,
+    dateRange: `${formatDate(activeBlock.start)} — ${formatDate(activeBlock.end, true)}`,
     currentWeek,
     totalWeeks,
     daysLeft,

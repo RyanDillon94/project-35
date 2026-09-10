@@ -204,22 +204,33 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
   };
 
-    const handleLockInWeek = () => {
+  const handleLockInWeek = () => {
+    if (!summaryData) {
+      setIsOpen(false);
+      return;
+    }
+
     const weekKey = `p35_finalised_week_${todayKey()}`;
-    const overallPct = summaryData?.overallPercentage ?? 0;
+    const overallPct = summaryData.overallPercentage ?? 0;
     
     const weekArchiveRecord = {
       date: todayKey(),
       overallPercentage: overallPct,
-      totalCompleted: summaryData?.totalCompleted ?? 0,
-      totalPossible: summaryData?.totalPossible ?? 0,
-      breakdown: summaryData?.habitBreakdown ?? [],
-      aiSynthesis: summaryData?.aiSummary ?? "",
+      totalCompleted: summaryData.totalCompleted ?? 0,
+      totalPossible: summaryData.totalPossible ?? 0,
+      breakdown: summaryData.habitBreakdown ?? [],
+      aiSynthesis: summaryData.aiSummary ?? "",
     };
 
-    localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
-    localStorage.setItem("p35_last_locked_week", todayKey());
+    try {
+      localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
+      localStorage.setItem("p35_last_locked_week", todayKey());
+    } catch (err) {
+      console.error("Failed to save weekly archive to localStorage", err);
+    }
     
+    setIsOpen(false);
+
     if (overallPct < 50) {
       toast.error(`Week locked in at ${overallPct}%. Absolute shambles. Sort your shit out.`);
     } else if (overallPct < 80) {
@@ -227,9 +238,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     } else {
       toast.success(`Week locked in at ${overallPct}%. Standard maintained.`);
     }
-
-    setIsOpen(false);
   };
+
+  const lastLocked = localStorage.getItem("p35_last_locked_week");
+  if (!summaryData || !summaryData.isSunday || lastLocked === todayKey()) {
+    return null;
+  }
 
   return (
     <div className="panel border-primary/40 bg-primary/10 p-4 space-y-3">

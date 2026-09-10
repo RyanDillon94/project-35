@@ -199,10 +199,19 @@ export function CoachDrawer({
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+    if (!open) return;
+    // Small timeout ensures the sheet content is fully rendered before jumping to bottom
+    const timer = setTimeout(() => {
+      endRef.current?.scrollIntoView({ behavior: "auto" });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [open, messages.length]);
+
   useEffect(() => {
     if (typeof document === "undefined" || !document.body || !endRef.current) return;
     endRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, open]);
+  }, [messages, loading]);
 
   const saveGeminiKey = (key: string) => {
     const clean = key.trim();

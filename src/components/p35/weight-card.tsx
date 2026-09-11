@@ -63,13 +63,26 @@ export function WeightCard({
   const dropped = latest != null ? +(START_WEIGHT - latest).toFixed(1) : 0;
   const toGoal = latest != null ? +(latest - GOAL_WEIGHT).toFixed(1) : null;
 
-const chartData = sorted.map((e) => {
+  const chartData = sorted.map((e) => {
     const [y, m, d] = e.date.split("-");
     return {
       label: `${d}/${m}`,
       weight: e.weight,
     };
   });
+
+  const handleWeightChange = (rawValue: string) => {
+    const cleaned = rawValue.replace(/\D/g, "");
+    let formattedValue = cleaned;
+
+    if (cleaned.length === 4) {
+      formattedValue = `${cleaned.slice(0, 3)}.${cleaned.slice(3)}`;
+    } else if (cleaned.length > 4) {
+      formattedValue = `${cleaned.slice(0, 3)}.${cleaned.slice(3, 4)}`;
+    }
+
+    setWeight(formattedValue);
+  };
 
   const save = async () => {
     const value = Number(weight);
@@ -138,12 +151,11 @@ const chartData = sorted.map((e) => {
                 <Label htmlFor="sunday-weight">Weekly average (lbs)</Label>
                 <Input
                   id="sunday-weight"
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  step="0.1"
                   placeholder="e.g. 218.4"
                   value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
+                  onChange={(e) => handleWeightChange(e.target.value)}
                 />
               </div>
               {Number(weight) > 0 && (

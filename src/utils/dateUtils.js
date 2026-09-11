@@ -19,3 +19,15 @@ export function toggleDeloadWeek() {
   localStorage.setItem('p35_deload_offset', next.toString());
   window.location.reload();
 }
+
+export function todayKey(now = getCurrentDate()) {
+  return now.toISOString().slice(0, 10);
+}
+
+export function lastSundayKey(now = getCurrentDate()) {
+  const d = new Date(now);
+  const day = d.getDay();
+  const diff = day === 0 ? 0 : day;
+  d.setDate(d.getDate() - diff);
+  return d.toISOString().slice(0, 10);
+}

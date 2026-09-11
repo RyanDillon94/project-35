@@ -49,7 +49,7 @@ export async function fetchLatestHevyWorkout({
     throw new Error(`Hevy request failed (${res.status}).`);
   }
 
-const json = (await res.json()) as {
+  const json = (await res.json()) as {
     workouts?: Array<{
       id?: string;
       title?: string;
@@ -95,10 +95,31 @@ const json = (await res.json()) as {
     if (latestWorkout) {
       localStorage.setItem("p35_cached_workout", JSON.stringify(latestWorkout));
     }
+    
     if (workouts.length > 0) {
-      localStorage.setItem("p35_hevy_workouts", JSON.stringify(workouts));
+      const existingRaw = localStorage.getItem("p35_hevy_workouts");
+      const existingWorkouts: HevyWorkout[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+      const workoutMap = new Map<string, HevyWorkout>();
+      existingWorkouts.forEach((w) => workoutMap.set(w.id, w));
+      workouts.forEach((w) => workoutMap.set(w.id, w));
+
+      const mergedWorkouts = Array.from(workoutMap.values()).sort((a, b) => {
+        const timeA = new Date(a.startTime || "").getTime();
+        const timeB = new Date(b.startTime || "").getTime();
+        return timeB - timeA;
+      });
+
+      localStorage.setItem("p35_hevy_workouts", JSON.stringify(mergedWorkouts));
+      
+      return {
+        workout: latestWorkout,
+        workouts: mergedWorkouts,
+      };
     }
-  } catch {}
+  } catch (e) {
+    console.error("Failed to merge/save workouts to localStorage", e);
+  }
 
   return {
     workout: latestWorkout,

@@ -78,7 +78,10 @@ export function calculateTrainingProgress(
 
   // Recent block is always the latest active week; baseline is the immediate prior active training week
   const recentWeekKey = sortedWeeks[sortedWeeks.length - 1];
-  const baselineWeekKey = sortedWeeks.length >= 2 ? sortedWeeks[sortedWeeks.length - 2] : sortedWeeks[0];
+  // Look back 4 active training blocks for a true 4-week comparison, falling back to the earliest if under 4 weeks available
+const baselineWeekKey = sortedWeeks.length >= 4 
+  ? sortedWeeks[sortedWeeks.length - 4] 
+  : sortedWeeks[0];
 
   const recentSets = weeklyBlocks.get(recentWeekKey) || [];
   const baselineSets = weeklyBlocks.get(baselineWeekKey) || [];

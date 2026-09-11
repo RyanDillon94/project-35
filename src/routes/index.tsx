@@ -12,6 +12,7 @@ import { FinaliseWeekBanner } from "@/components/p35/finalise-week-banner";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { TestModePanel } from '../components/TestModePanel';
 import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
+import { StrengthCard } from "@/components/p35/StrengthCard";
 
 
 export const Route = createFileRoute("/")({
@@ -68,7 +69,7 @@ function Dashboard({ userId }: { userId: string }) {
             <div className="flex flex-col items-center gap-2 pt-2">
         <p className="text-center text-sm italic tracking-wide text-primary/90 font-medium">
           &ldquo;Only cunts drink on weekdays... Don&apos;t be a cunt.&rdquo;
-        </p>
+        </p><br></br>
       </div>
 
 

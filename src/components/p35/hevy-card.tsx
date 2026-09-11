@@ -78,7 +78,7 @@ export function HevyCard({
         localStorage.setItem("p35_cached_workout", JSON.stringify(result.workout));
         if (onWorkout) {
           onWorkout(result.workout).catch(() => {});
-    }
+        }
         toast.success("Latest Hevy workout synced.");
       }
     } catch (error) {
@@ -86,6 +86,23 @@ export function HevyCard({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper to format weight in lbs for cable work, or kg for standard lifts
+  const formatWeight = (weight: number | null | undefined, exerciseTitle: string) => {
+    if (weight == null) return "BW";
+    
+    const titleLower = exerciseTitle.toLowerCase();
+    const isCableOrLbs = titleLower.includes("cable") || titleLower.includes("pushdown");
+    
+    if (isCableOrLbs) {
+      const weightLbs = weight * 2.20462;
+      const roundedLbs = Math.round(weightLbs * 10) / 10;
+      return `${roundedLbs}lbs`;
+    }
+    
+    const roundedKg = Number.isInteger(weight) ? weight : Math.round(weight * 10) / 10;
+    return `${roundedKg}kg`;
   };
 
   const displayWorkout = currentWorkout || initialWorkout;
@@ -175,12 +192,15 @@ export function HevyCard({
                     </div>
                   ) : (
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      {ex.sets.map((s, sIdx) => (
-                        <div key={sIdx} className="flex items-center gap-2">
-                          {sIdx > 0 && <span className="size-1 rounded-full bg-primary/60 shrink-0" />}
-                          <span>{`${s.weightKg ?? "BW"}kg \u00d7 ${s.reps ?? "?"}`}</span>
-                        </div>
-                      ))}
+                      {ex.sets.map((s, sIdx) => {
+                        const weightDisplay = formatWeight(s.weightKg, ex.title);
+                        return (
+                          <div key={sIdx} className="flex items-center gap-2">
+                            {sIdx > 0 && <span className="size-1 rounded-full bg-primary/60 shrink-0" />}
+                            <span>{`${weightDisplay} \u00d7 ${s.reps ?? "?"}`}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 

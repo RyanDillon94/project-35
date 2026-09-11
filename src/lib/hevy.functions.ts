@@ -24,17 +24,16 @@ export async function fetchLatestHevyWorkout({
   data,
 }: {
   data: { apiKey: string };
-}): Promise<{ workout: HevyWorkout | null }> {
+}): Promise<{ workout: HevyWorkout | null; workouts: HevyWorkout[] }> {
   const cleanKey = data.apiKey.trim();
   if (!cleanKey) {
     throw new Error("Missing Hevy API key.");
   }
 
-  // Uses the Netlify proxy path first to bypass CORS; falls back to direct URL
   const endpoint =
     window.location.hostname === "localhost"
-      ? "https://api.hevyapp.com/v1/workouts?page=1&pageSize=5"
-      : "/hevy-api/workouts?page=1&pageSize=5";
+      ? "https://api.hevyapp.com/v1/workouts?page=1&pageSize=10"
+      : "/hevy-api/workouts?page=1&pageSize=10";
 
   const res = await fetch(endpoint, {
     headers: {
@@ -50,7 +49,7 @@ export async function fetchLatestHevyWorkout({
     throw new Error(`Hevy request failed (${res.status}).`);
   }
 
-  const json = (await res.json()) as {
+const json = (await res.json()) as {
     workouts?: Array<{
       id?: string;
       title?: string;
@@ -70,26 +69,39 @@ export async function fetchLatestHevyWorkout({
     }>;
   };
 
-  const raw = json.workouts?.[0];
-  if (!raw) return { workout: null };
+  const rawWorkouts = json.workouts ?? [];
+  
+  const workouts: HevyWorkout[] = rawWorkouts.map((raw) => ({
+    id: raw.id ?? "unknown",
+    title: raw.title ?? "Untitled workout",
+    startTime: raw.start_time ?? null,
+    endTime: raw.end_time ?? null,
+    exercises: (raw.exercises ?? []).map((ex) => ({
+      title: ex.title ?? "Exercise",
+      notes: ex.notes ?? null,
+      sets: (ex.sets ?? []).map((s) => ({
+        weightKg: s.weight_kg ?? null,
+        reps: s.reps ?? null,
+        type: s.type,
+        rpe: s.rpe ?? null,
+        notes: s.notes ?? null,
+      })),
+    })),
+  }));
+
+  const latestWorkout = workouts[0] ?? null;
+
+  try {
+    if (latestWorkout) {
+      localStorage.setItem("p35_cached_workout", JSON.stringify(latestWorkout));
+    }
+    if (workouts.length > 0) {
+      localStorage.setItem("p35_hevy_workouts", JSON.stringify(workouts));
+    }
+  } catch {}
 
   return {
-    workout: {
-      id: raw.id ?? "latest",
-      title: raw.title ?? "Untitled workout",
-      startTime: raw.start_time ?? null,
-      endTime: raw.end_time ?? null,
-      exercises: (raw.exercises ?? []).map((ex) => ({
-        title: ex.title ?? "Exercise",
-        notes: ex.notes ?? null,
-        sets: (ex.sets ?? []).map((s) => ({
-          weightKg: s.weight_kg ?? null,
-          reps: s.reps ?? null,
-          type: s.type,
-          rpe: s.rpe ?? null,
-          notes: s.notes ?? null,
-        })),
-      })),
-    },
+    workout: latestWorkout,
+    workouts,
   };
 }

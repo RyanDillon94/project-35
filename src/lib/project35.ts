@@ -57,7 +57,7 @@ export const PHASES: PhaseDef[] = [
         bullets: [
           "Non-negotiable 6:00 AM lift, five days a week of showing up",
           "2,000–2,400 kcal, 180g+ protein, 12,500 steps daily",
-          "Friday weekly average weight is the only scale number that counts",
+          "End of week average weight is the only scale number that counts",
         ],
         blockHabits: [
           { key: "steps", label: "12,500 Steps Hit", sublabel: "Daily Activity Base" },

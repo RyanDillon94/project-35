@@ -21,8 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { GOAL_WEIGHT, lastFridayKey } from "@/lib/project35";
-import { triggerFridayBackup } from "@/lib/p35-cloud";
+import { GOAL_WEIGHT, START_WEIGHT, lastSundayKey } from "@/lib/project35";
 import { Plus, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,7 +38,7 @@ export function WeightCard({
   saving?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState(lastFridayKey());
+  const [date, setDate] = useState(lastSundayKey());
   const [weight, setWeight] = useState("");
   const [localEntries, setLocalEntries] = useState<WeightEntry[]>(() => {
     try {
@@ -60,15 +59,17 @@ export function WeightCard({
     () => [...localEntries].sort((a, b) => a.date.localeCompare(b.date)),
     [localEntries]
   );
-  const first = sorted[0]?.weight;
   const latest = sorted[sorted.length - 1]?.weight;
-  const dropped = first != null && latest != null ? +(first - latest).toFixed(1) : 0;
+  const dropped = latest != null ? +(START_WEIGHT - latest).toFixed(1) : 0;
   const toGoal = latest != null ? +(latest - GOAL_WEIGHT).toFixed(1) : null;
 
-  const chartData = sorted.map((e) => ({
-    label: e.date.slice(5),
-    weight: e.weight,
-  }));
+const chartData = sorted.map((e) => {
+    const [y, m, d] = e.date.split("-");
+    return {
+      label: `${d}/${m}`,
+      weight: e.weight,
+    };
+  });
 
   const save = async () => {
     const value = Number(weight);
@@ -95,12 +96,9 @@ export function WeightCard({
         onSave(newEntry).catch(() => {});
       }
 
-      toast.success("Friday average saved locally.");
+      toast.success("Sunday average saved locally.");
       setWeight("");
       setOpen(false);
-
-      // Triggers native mobile share sheet (Google Drive, Files, etc.) or auto-download
-      await triggerFridayBackup(date);
     } catch {
       toast.error("Could not save entry.");
     }
@@ -116,30 +114,30 @@ export function WeightCard({
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-9">
-              <Plus className="size-4" /> Log Friday
+              <Plus className="size-4" /> Log Sunday
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Log Friday Weight</DialogTitle>
+              <DialogTitle>Log Sunday Weight</DialogTitle>
               <DialogDescription>
-                Enter your Friday weekly average. Goal line is {GOAL_WEIGHT} lbs.
+                Enter your Sunday weekly average. Goal line is {GOAL_WEIGHT} lbs.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="friday-date">Friday date</Label>
+                <Label htmlFor="sunday-date">Sunday date</Label>
                 <Input
-                  id="friday-date"
+                  id="sunday-date"
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="friday-weight">Weekly average (lbs)</Label>
+                <Label htmlFor="sunday-weight">Weekly average (lbs)</Label>
                 <Input
-                  id="friday-weight"
+                  id="sunday-weight"
                   type="number"
                   inputMode="decimal"
                   step="0.1"
@@ -148,11 +146,11 @@ export function WeightCard({
                   onChange={(e) => setWeight(e.target.value)}
                 />
               </div>
-              {first != null && Number(weight) > 0 && (
+              {Number(weight) > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Pounds dropped to date:{" "}
+                  Pounds dropped from start ({START_WEIGHT} lbs):{" "}
                   <span className="font-semibold text-primary">
-                    {(first - Number(weight)).toFixed(1)} lbs
+                    {(START_WEIGHT - Number(weight)).toFixed(1)} lbs
                   </span>
                 </p>
               )}
@@ -185,7 +183,7 @@ export function WeightCard({
       <div className="mt-4 h-56 w-full">
         {chartData.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-            Log your first Friday average to start the trend.
+            Log your first Sunday average to start the trend.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

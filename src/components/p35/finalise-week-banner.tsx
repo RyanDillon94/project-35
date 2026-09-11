@@ -8,6 +8,7 @@ import {
   DAILY_TARGETS, 
   GOAL_WEIGHT 
 } from "@/lib/project35";
+import { triggerFridayBackup } from "@/lib/p35-cloud";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
@@ -223,7 +224,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
   };
 
-  const handleLockInWeek = () => {
+  const handleLockInWeek = async () => {
     if (!summaryData) {
       setIsOpen(false);
       return;
@@ -244,8 +245,10 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     try {
       localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
       localStorage.setItem("p35_last_locked_week", todayKey());
+      
+      await triggerFridayBackup(todayKey());
     } catch (err) {
-      console.error("Failed to save weekly archive to localStorage", err);
+      console.error("Failed to save weekly archive or trigger backup", err);
     }
     
     setIsOpen(false);
@@ -282,7 +285,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           setIsOpen(open);
           if (open) {
             calculateWeekData();
-            // STRICTLY MANUAL NOW: No auto-fetch here whatsoever
           }
         }}>
           <DialogTrigger asChild>
@@ -358,7 +360,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 )}
               </div>
 
-              <Button className="w-full" onClick={handleLockInWeek}>
+              <Button className="w-full" onClick={() => void handleLockInWeek()}>
                 Lock In & Close Summary
               </Button>
             </div>

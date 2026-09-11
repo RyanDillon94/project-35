@@ -10,8 +10,8 @@ export const DAILY_TARGETS = {
   routine: "6:00 AM Iron → 7:00 AM Dog Walk",
 };
 
-export const GOAL_WEIGHT = 190;
-export const START_WEIGHT = 220;
+export const GOAL_WEIGHT = 190.0;
+export const START_WEIGHT = 224.0;
 
 export type HabitDefinition = {
   key: string;
@@ -373,9 +373,9 @@ export function todayKey(now = getCurrentDate()) {
   return now.toISOString().slice(0, 10);
 }
 
-export function lastFridayKey(now = getCurrentDate()) {
+export function lastSundayKey(now = getCurrentDate()) {
   const d = new Date(now);
-  const diff = (d.getUTCDay() + 2) % 7;
-  d.setUTCDate(d.getUTCDate() - diff);
+  const day = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() - day);
   return d.toISOString().slice(0, 10);
 }

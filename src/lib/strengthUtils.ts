@@ -7,11 +7,20 @@ export type WorkoutSet = {
   date: string; // YYYY-MM-DD
 };
 
+export type ExerciseDetail = {
+  exerciseName: string;
+  currentE1RM: number;
+  baselineE1RM: number;
+  percentChange: number;
+  currentVolume: number;
+};
+
 export type MuscleGroupSummary = {
   strengthChange: number;
   volumeChange: number;
   currentVolume: number;
   baselineVolume: number;
+  topExercises: ExerciseDetail[];
 };
 
 export type ProgressReport = {
@@ -52,7 +61,7 @@ export function calculateTrainingProgress(
 
   const emptyGroups = {} as Record<MuscleGroup, MuscleGroupSummary>;
   MUSCLE_GROUPS.forEach(g => {
-    emptyGroups[g] = { strengthChange: 0, volumeChange: 0, currentVolume: 0, baselineVolume: 0 };
+    emptyGroups[g] = { strengthChange: 0, volumeChange: 0, currentVolume: 0, baselineVolume: 0, topExercises: [] };
   });
 
   if (validSets.length === 0) {
@@ -76,12 +85,11 @@ export function calculateTrainingProgress(
     return { overallStrengthChange: 0, overallVolumeChange: 0, muscleGroups: emptyGroups, weeklyTrend: [] };
   }
 
-  // Recent block is always the latest active week; baseline is the immediate prior active training week
+  // Recent block is always the latest active week; baseline is look back 4 active training blocks (or earliest)
   const recentWeekKey = sortedWeeks[sortedWeeks.length - 1];
-  // Look back 4 active training blocks for a true 4-week comparison, falling back to the earliest if under 4 weeks available
-const baselineWeekKey = sortedWeeks.length >= 4 
-  ? sortedWeeks[sortedWeeks.length - 4] 
-  : sortedWeeks[0];
+  const baselineWeekKey = sortedWeeks.length >= 4 
+    ? sortedWeeks[sortedWeeks.length - 4] 
+    : sortedWeeks[0];
 
   const recentSets = weeklyBlocks.get(recentWeekKey) || [];
   const baselineSets = weeklyBlocks.get(baselineWeekKey) || [];
@@ -106,6 +114,7 @@ const baselineWeekKey = sortedWeeks.length >= 4
         volumeChange: 0,
         currentVolume: muscleVols[g],
         baselineVolume: muscleVols[g],
+        topExercises: [],
       };
     });
 
@@ -166,18 +175,33 @@ const baselineWeekKey = sortedWeeks.length >= 4
     Legs: { totalWeightedChange: 0, totalWeight: 0 },
   };
 
-  exerciseComparison.forEach((data) => {
+  const muscleExercises: Record<MuscleGroup, ExerciseDetail[]> = {
+    Chest: [], Back: [], Shoulders: [], Biceps: [], Triceps: [], Legs: []
+  };
+
+  exerciseComparison.forEach((data, exerciseName) => {
     muscleVolumeBase[data.muscle] += data.baseVol;
     muscleVolumeRecent[data.muscle] += data.recentVol;
     totalVolumeBase += data.baseVol;
     totalVolumeRecent += data.recentVol;
 
+    let exStrengthChange = 0;
     if (data.baseE1rm > 0 && data.recentE1rm > 0) {
-      const exChange = ((data.recentE1rm - data.baseE1rm) / data.baseE1rm) * 100;
+      exStrengthChange = Math.round(((data.recentE1rm - data.baseE1rm) / data.baseE1rm) * 1000) / 10;
       const weight = data.recentSets + data.baseSets;
 
-      muscleStrengthChanges[data.muscle].totalWeightedChange += exChange * weight;
+      muscleStrengthChanges[data.muscle].totalWeightedChange += exStrengthChange * weight;
       muscleStrengthChanges[data.muscle].totalWeight += weight;
+    }
+
+    if (data.recentVol > 0 || data.baseVol > 0) {
+      muscleExercises[data.muscle].push({
+        exerciseName,
+        currentE1RM: data.recentE1rm,
+        baselineE1RM: data.baseE1rm,
+        percentChange: exStrengthChange,
+        currentVolume: data.recentVol,
+      });
     }
   });
 
@@ -190,6 +214,8 @@ const baselineWeekKey = sortedWeeks.length >= 4
   let overallStrengthWeight = 0;
 
   MUSCLE_GROUPS.forEach(group => {
+    muscleExercises[group].sort((a, b) => b.currentVolume - a.currentVolume);
+
     const mData = muscleStrengthChanges[group];
     const strengthChange = mData.totalWeight > 0 
       ? Math.round((mData.totalWeightedChange / mData.totalWeight) * 10) / 10 
@@ -206,6 +232,7 @@ const baselineWeekKey = sortedWeeks.length >= 4
       volumeChange,
       currentVolume: vRecent,
       baselineVolume: vBase,
+      topExercises: muscleExercises[group].slice(0, 2),
     };
 
     if (mData.totalWeight > 0 && group !== "Biceps" && group !== "Triceps") {

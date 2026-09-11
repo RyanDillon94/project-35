@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TrendingUp, BarChart3, CheckCircle2, Flame, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { TrendingUp, BarChart3, CheckCircle2, Flame, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { getActiveHabits } from "@/lib/project35";
 import { calculateTrainingProgress, WorkoutSet } from "@/lib/strengthUtils";
 import { MUSCLE_GROUPS } from "@/lib/strengthMapping";
@@ -123,7 +123,10 @@ export function WeeklyTrendsAnalytics() {
     return Math.round(validWeeks.reduce((acc, curr) => acc + curr.score, 0) / validWeeks.length);
   }, [trendData]);
 
-  const renderChangeBadge = (val: number) => {
+  const renderChangeBadge = (val: number, hasData: boolean) => {
+    if (!hasData) {
+      return <span className="text-muted-foreground text-xs">—</span>;
+    }
     if (val > 0) {
       return (
         <span className="inline-flex items-center gap-0.5 text-emerald-500 font-semibold">
@@ -139,7 +142,7 @@ export function WeeklyTrendsAnalytics() {
     }
     return (
       <span className="inline-flex items-center gap-0.5 text-muted-foreground font-semibold">
-        0.0% <Minus className="size-3.5" />
+        0.0% →
       </span>
     );
   };
@@ -223,13 +226,13 @@ export function WeeklyTrendsAnalytics() {
                 <div className="rounded-lg border border-border bg-surface-2/60 p-3.5 text-center space-y-1">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Strength</p>
                   <div className="font-display text-xl font-bold pt-1">
-                    {renderChangeBadge(progress.overallStrengthChange)}
+                    {renderChangeBadge(progress.overallStrengthChange, true)}
                   </div>
                 </div>
                 <div className="rounded-lg border border-border bg-surface-2/60 p-3.5 text-center space-y-1">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Volume</p>
                   <div className="font-display text-xl font-bold pt-1">
-                    {renderChangeBadge(progress.overallVolumeChange)}
+                    {renderChangeBadge(progress.overallVolumeChange, true)}
                   </div>
                 </div>
               </div>
@@ -253,10 +256,10 @@ export function WeeklyTrendsAnalytics() {
                         <span className="font-medium text-foreground">{group}</span>
                         <div className="flex gap-6 text-right">
                           <div className="w-16 text-right">
-                            {hasActivity ? renderChangeBadge(data.strengthChange) : <span className="text-muted-foreground text-xs">—</span>}
+                            {renderChangeBadge(data.strengthChange, hasActivity && data.baselineVolume > 0)}
                           </div>
                           <div className="w-16 text-right">
-                            {hasActivity ? renderChangeBadge(data.volumeChange) : <span className="text-muted-foreground text-xs">—</span>}
+                            {renderChangeBadge(data.volumeChange, hasActivity)}
                           </div>
                         </div>
                       </div>

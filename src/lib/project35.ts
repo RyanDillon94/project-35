@@ -42,14 +42,14 @@ export type PhaseDef = {
 export const PHASES: PhaseDef[] = [
   {
     id: 1,
-    title: "The Clock & The Cut",
+    title: "Setting the Standards & The Cut",
     window: "Sep 2026 – Mar 2027",
     status: "active",
     summary: "Establish the 6:00 AM habit and drop 30 lbs toward 190 lbs.",
     badges: ["Fat Loss", "Discipline"],
     blocks: [
       {
-        name: "Block 1: The Clock",
+        name: "Block 1: Setting the Standards",
         window: "Weeks 1–12",
         start: "2026-09-07",
         end: "2026-11-29",

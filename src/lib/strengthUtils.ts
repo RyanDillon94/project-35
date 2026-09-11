@@ -49,12 +49,9 @@ export function calculateTrainingProgress(
     return { overallStrengthChange: 0, overallVolumeChange: 0, muscleGroups: emptyGroups, weeklyTrend: [] };
   }
 
-  const sortedDates = Array.from(new Set(validSets.map(s => s.date))).sort();
-  const baselineDateStr = sortedDates[0];
-  const recentDateStr = sortedDates[sortedDates.length - 1];
-
-  const baselineTimeLimit = new Date(baselineDateStr).getTime() + 3 * 86_400_000;
-  const recentTimeLimit = new Date(recentDateStr).getTime() - 3 * 86_400_000;
+  // True 4-week window boundaries: Baseline is the first 7 days of the 28-day window; Recent is the last 7 days.
+  const baselineTimeLimit = cutoffTime + 7 * 86_400_000;
+  const recentTimeLimit = now - 7 * 86_400_000;
 
   const exerciseComparison: Map<string, { muscle: MuscleGroup; baseE1rm: number; recentE1rm: number; baseVol: number; recentVol: number; baseSets: number; recentSets: number }> = new Map();
 
@@ -149,7 +146,6 @@ export function calculateTrainingProgress(
       baselineVolume: v1,
     };
 
-    // Aggregate ONLY compound lift groups into the overall strength headline score
     if (mData.totalWeight > 0 && group !== "Biceps" && group !== "Triceps") {
       overallWeightedStrengthChange += mData.totalWeightedChange;
       overallStrengthWeight += mData.totalWeight;

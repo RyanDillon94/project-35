@@ -1,11 +1,63 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TrendingUp, BarChart3, CheckCircle2, Flame } from "lucide-react";
+import { TrendingUp, BarChart3, CheckCircle2, Flame, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import { getActiveHabits } from "@/lib/project35";
+import { calculateTrainingProgress, WorkoutSet } from "@/lib/strengthUtils";
+import { MUSCLE_GROUPS } from "@/lib/strengthMapping";
 
 export function WeeklyTrendsAnalytics() {
   const [isOpen, setIsOpen] = useState(false);
+
+  const sets: WorkoutSet[] = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("p35_hevy_workouts") || localStorage.getItem("p35_cached_workout");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!parsed) return [];
+      
+      const extracted: WorkoutSet[] = [];
+      const workouts = Array.isArray(parsed) ? parsed : [parsed];
+      
+      workouts.forEach((w: any) => {
+        if (!w) return;
+        const date = w.date || w.startTime?.slice(0, 10) || w.start_time?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+        const exercises = w.exercises || w.workout_exercises || [];
+        if (!Array.isArray(exercises)) return;
+
+        exercises.forEach((ex: any) => {
+          if (!ex) return;
+          const exerciseName = ex.exercise_title || ex.title || ex.exercise?.title || "";
+          const exerciseSets = ex.sets || [];
+          if (!Array.isArray(exerciseSets)) return;
+
+          exerciseSets.forEach((s: any) => {
+            if (s && (s.weightKg !== null || s.weight !== null || s.weight_kg !== null || s.weightKg !== undefined)) {
+              const weight = Number(s.weightKg ?? s.weight ?? s.weight_kg ?? 0);
+              const reps = Number(s.reps ?? 0);
+              if (weight > 0 && reps > 0) {
+                extracted.push({
+                  exerciseName,
+                  weight,
+                  reps,
+                  date,
+                });
+              }
+            }
+          });
+        });
+      });
+      
+      return extracted;
+    } catch (err) {
+      console.error("Failed to parse workout history sets:", err);
+      return [];
+    }
+  }, [isOpen]);
+
+  const progress = useMemo(() => {
+    return calculateTrainingProgress(sets);
+  }, [sets]);
 
   const trendData = useMemo(() => {
     const weeks: { weekLabel: string; score: number }[] = [];
@@ -71,6 +123,27 @@ export function WeeklyTrendsAnalytics() {
     return Math.round(validWeeks.reduce((acc, curr) => acc + curr.score, 0) / validWeeks.length);
   }, [trendData]);
 
+  const renderChangeBadge = (val: number) => {
+    if (val > 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-emerald-500 font-semibold">
+          +{val}% <ArrowUpRight className="size-3.5" />
+        </span>
+      );
+    } else if (val < 0) {
+      return (
+        <span className="inline-flex items-center gap-0.5 text-rose-500 font-semibold">
+          {val}% <ArrowDownRight className="size-3.5" />
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-0.5 text-muted-foreground font-semibold">
+        0.0% <Minus className="size-3.5" />
+      </span>
+    );
+  };
+
   return (
     <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5">
       <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -96,7 +169,8 @@ export function WeeklyTrendsAnalytics() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2">
+          <div className="space-y-5 pt-2">
+            {/* Weekly Adherence Section */}
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg border border-border bg-surface-2/60 p-3 text-center space-y-1">
                 <p className="stat-label flex items-center justify-center gap-1">
@@ -135,10 +209,63 @@ export function WeeklyTrendsAnalytics() {
                 ))}
               </div>
             </div>
-
             <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
               Adherence is calculated dynamically based on weekday versus weekend rule profiles across each active training block.
             </p>
+
+            {/* 4-Week Training Progress Section */}
+            <div className="mt-6 pt-5 border-t border-border space-y-4">
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                4-Week Training Progress
+              </h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border bg-surface-2/60 p-3.5 text-center space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Strength</p>
+                  <div className="font-display text-xl font-bold pt-1">
+                    {renderChangeBadge(progress.overallStrengthChange)}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border bg-surface-2/60 p-3.5 text-center space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Volume</p>
+                  <div className="font-display text-xl font-bold pt-1">
+                    {renderChangeBadge(progress.overallVolumeChange)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 rounded-lg border border-border bg-surface-2/40 p-4">
+                <div className="flex items-center justify-between pb-2 border-b border-border/60 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span>Muscle Groups</span>
+                  <div className="flex gap-6 pr-2">
+                    <span>Strength</span>
+                    <span>Volume</span>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  {MUSCLE_GROUPS.map((group) => {
+                    const data = progress.muscleGroups[group];
+                    const hasActivity = data && (data.currentVolume > 0 || data.baselineVolume > 0);
+
+                    return (
+                      <div key={group} className="flex items-center justify-between text-sm py-1">
+                        <span className="font-medium text-foreground">{group}</span>
+                        <div className="flex gap-6 text-right">
+                          <div className="w-16 text-right">
+                            {hasActivity ? renderChangeBadge(data.strengthChange) : <span className="text-muted-foreground text-xs">—</span>}
+                          </div>
+                          <div className="w-16 text-right">
+                            {hasActivity ? renderChangeBadge(data.volumeChange) : <span className="text-muted-foreground text-xs">—</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
           </div>
         </DialogContent>
       </Dialog>

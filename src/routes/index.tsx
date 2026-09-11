@@ -12,6 +12,7 @@ import { FinaliseWeekBanner } from "@/components/p35/finalise-week-banner";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { TestModePanel } from '../components/TestModePanel';
 import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
+import { StrengthCard } from "@/components/p35/StrengthCard";
 
 
 export const Route = createFileRoute("/")({

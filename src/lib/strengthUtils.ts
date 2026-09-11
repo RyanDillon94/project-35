@@ -7,20 +7,11 @@ export type WorkoutSet = {
   date: string; // YYYY-MM-DD
 };
 
-export type ExerciseDetail = {
-  exerciseName: string;
-  currentE1RM: number;
-  baselineE1RM: number;
-  percentChange: number;
-  currentVolume: number;
-};
-
 export type MuscleGroupSummary = {
   strengthChange: number;
   volumeChange: number;
   currentVolume: number;
   baselineVolume: number;
-  topExercises: ExerciseDetail[];
 };
 
 export type ProgressReport = {
@@ -40,7 +31,7 @@ export function calculateE1RM(weight: number, reps: number): number {
 function getMondayKey(dateStr: string): string {
   const d = new Date(dateStr);
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
   const monday = new Date(d.setDate(diff));
   return monday.toISOString().slice(0, 10);
 }
@@ -61,7 +52,7 @@ export function calculateTrainingProgress(
 
   const emptyGroups = {} as Record<MuscleGroup, MuscleGroupSummary>;
   MUSCLE_GROUPS.forEach(g => {
-    emptyGroups[g] = { strengthChange: 0, volumeChange: 0, currentVolume: 0, baselineVolume: 0, topExercises: [] };
+    emptyGroups[g] = { strengthChange: 0, volumeChange: 0, currentVolume: 0, baselineVolume: 0 };
   });
 
   if (validSets.length === 0) {
@@ -85,21 +76,28 @@ export function calculateTrainingProgress(
     return { overallStrengthChange: 0, overallVolumeChange: 0, muscleGroups: emptyGroups, weeklyTrend: [] };
   }
 
-  // Recent block is always the latest active week; baseline is look back 4 active training blocks (or earliest)
+  // Recent block is always the latest active week; baseline is the immediate prior active training week
   const recentWeekKey = sortedWeeks[sortedWeeks.length - 1];
-  const baselineWeekKey = sortedWeeks.length >= 4 
-    ? sortedWeeks[sortedWeeks.length - 4] 
-    : sortedWeeks[0];
+  // Look back 4 active training blocks for a true 4-week comparison, falling back to the earliest if under 4 weeks available
+const baselineWeekKey = sortedWeeks.length >= 4 
+  ? sortedWeeks[sortedWeeks.length - 4] 
+  : sortedWeeks[0];
 
   const recentSets = weeklyBlocks.get(recentWeekKey) || [];
   const baselineSets = weeklyBlocks.get(baselineWeekKey) || [];
 
+  // If baseline and recent point to the exact same single week, we can't compare block-to-block yet
   if (sortedWeeks.length === 1) {
     const muscleGroupSummaries = {} as Record<MuscleGroup, MuscleGroupSummary>;
+    let totalVol = 0;
+    
     const muscleVols: Record<MuscleGroup, number> = { Chest: 0, Back: 0, Shoulders: 0, Biceps: 0, Triceps: 0, Legs: 0 };
     recentSets.forEach(s => {
       const m = getMuscleGroupForExercise(s.exerciseName);
-      if (m) muscleVols[m] += s.weight * s.reps;
+      if (m) {
+        muscleVols[m] += s.weight * s.reps;
+        totalVol += s.weight * s.reps;
+      }
     });
 
     MUSCLE_GROUPS.forEach(g => {
@@ -108,7 +106,6 @@ export function calculateTrainingProgress(
         volumeChange: 0,
         currentVolume: muscleVols[g],
         baselineVolume: muscleVols[g],
-        topExercises: [],
       };
     });
 
@@ -120,9 +117,10 @@ export function calculateTrainingProgress(
     };
   }
 
-  // Compute metrics per exercise for baseline week vs recent week (Restoring OG calculation logic)
+  // Compute metrics per exercise for baseline week vs recent week
   const exerciseComparison: Map<string, { muscle: MuscleGroup; baseE1rm: number; recentE1rm: number; baseVol: number; recentVol: number; baseSets: number; recentSets: number }> = new Map();
 
+  // Process baseline sets
   baselineSets.forEach(s => {
     const muscle = getMuscleGroupForExercise(s.exerciseName);
     if (!muscle) return;
@@ -138,6 +136,7 @@ export function calculateTrainingProgress(
     if (e1rm > entry.baseE1rm) entry.baseE1rm = e1rm;
   });
 
+  // Process recent sets
   recentSets.forEach(s => {
     const muscle = getMuscleGroupForExercise(s.exerciseName);
     if (!muscle) return;
@@ -167,11 +166,7 @@ export function calculateTrainingProgress(
     Legs: { totalWeightedChange: 0, totalWeight: 0 },
   };
 
-  const muscleExercises: Record<MuscleGroup, ExerciseDetail[]> = {
-    Chest: [], Back: [], Shoulders: [], Biceps: [], Triceps: [], Legs: []
-  };
-
-  exerciseComparison.forEach((data, exerciseName) => {
+  exerciseComparison.forEach((data) => {
     muscleVolumeBase[data.muscle] += data.baseVol;
     muscleVolumeRecent[data.muscle] += data.recentVol;
     totalVolumeBase += data.baseVol;
@@ -184,20 +179,6 @@ export function calculateTrainingProgress(
       muscleStrengthChanges[data.muscle].totalWeightedChange += exChange * weight;
       muscleStrengthChanges[data.muscle].totalWeight += weight;
     }
-
-    if (data.recentVol > 0) {
-      let percentChange = 0;
-      if (data.baseE1rm > 0 && data.recentE1rm > 0) {
-        percentChange = Math.round(((data.recentE1rm - data.baseE1rm) / data.baseE1rm) * 1000) / 10;
-      }
-      muscleExercises[data.muscle].push({
-        exerciseName,
-        currentE1RM: data.recentE1rm,
-        baselineE1RM: data.baseE1rm,
-        percentChange,
-        currentVolume: data.recentVol,
-      });
-    }
   });
 
   const overallVolumeChange = totalVolumeBase > 0 
@@ -209,8 +190,6 @@ export function calculateTrainingProgress(
   let overallStrengthWeight = 0;
 
   MUSCLE_GROUPS.forEach(group => {
-    muscleExercises[group].sort((a, b) => b.currentVolume - a.currentVolume);
-
     const mData = muscleStrengthChanges[group];
     const strengthChange = mData.totalWeight > 0 
       ? Math.round((mData.totalWeightedChange / mData.totalWeight) * 10) / 10 
@@ -227,7 +206,6 @@ export function calculateTrainingProgress(
       volumeChange,
       currentVolume: vRecent,
       baselineVolume: vBase,
-      topExercises: muscleExercises[group].slice(0, 2),
     };
 
     if (mData.totalWeight > 0 && group !== "Biceps" && group !== "Triceps") {

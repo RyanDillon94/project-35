@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { TrendingUp, BarChart3, CheckCircle2, Flame, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, BarChart3, CheckCircle2, Flame, ArrowUpRight, ArrowDownRight, ChevronDown } from "lucide-react";
 import { getActiveHabits } from "@/lib/project35";
 import { calculateTrainingProgress, WorkoutSet } from "@/lib/strengthUtils";
 import { MUSCLE_GROUPS } from "@/lib/strengthMapping";
 
 export function WeeklyTrendsAnalytics() {
   const [isOpen, setIsOpen] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   const sets: WorkoutSet[] = useMemo(() => {
     try {
@@ -250,18 +251,46 @@ export function WeeklyTrendsAnalytics() {
                   {MUSCLE_GROUPS.map((group) => {
                     const data = progress.muscleGroups[group];
                     const hasActivity = data && (data.currentVolume > 0 || data.baselineVolume > 0);
+                    const isExpanded = expandedGroup === group;
 
                     return (
-                      <div key={group} className="flex items-center justify-between text-sm py-1">
-                        <span className="font-medium text-foreground">{group}</span>
-                        <div className="flex gap-6 text-right">
-                          <div className="w-16 text-right">
-                            {renderChangeBadge(data.strengthChange, hasActivity && data.baselineVolume > 0)}
+                      <div key={group} className="border-b border-border/40 last:border-0 pb-1">
+                        <div 
+                          onClick={() => hasActivity && setExpandedGroup(isExpanded ? null : group)}
+                          className={`flex items-center justify-between text-sm py-2 px-2 rounded-lg transition-colors ${hasActivity ? "cursor-pointer hover:bg-surface-2/80" : ""}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{group}</span>
+                            {hasActivity && data.topExercises.length > 0 && (
+                              <ChevronDown className={`size-3.5 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                            )}
                           </div>
-                          <div className="w-16 text-right">
-                            {renderChangeBadge(data.volumeChange, hasActivity)}
+                          <div className="flex gap-6 text-right">
+                            <div className="w-16 text-right">
+                              {renderChangeBadge(data.strengthChange, hasActivity && data.baselineVolume > 0)}
+                            </div>
+                            <div className="w-16 text-right">
+                              {renderChangeBadge(data.volumeChange, hasActivity)}
+                            </div>
                           </div>
                         </div>
+
+                        {isExpanded && data.topExercises.length > 0 && (
+                          <div className="pb-3 pt-1 px-3 space-y-2 bg-surface-2/30 rounded-b-lg border-x border-b border-border/40 mb-2">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Top Exercises (4-Week Trend)</p>
+                            {data.topExercises.map((ex, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-xs py-1 border-t border-border/20 first:border-0">
+                                <span className="text-foreground truncate max-w-[180px]">{ex.exerciseName}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-muted-foreground">{ex.currentE1RM > 0 ? `${ex.currentE1RM}kg e1RM` : "—"}</span>
+                                  <span className={ex.percentChange >= 0 ? "text-emerald-500 font-semibold" : "text-rose-500 font-semibold"}>
+                                    {ex.percentChange > 0 ? `+${ex.percentChange}%` : `${ex.percentChange}%`}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

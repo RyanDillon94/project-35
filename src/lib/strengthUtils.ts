@@ -38,7 +38,7 @@ function getMondayKey(dateStr: string): string {
 
 export function calculateTrainingProgress(
   sets: WorkoutSet[],
-  windowDays = 28
+  windowDays = 90
 ): ProgressReport {
   const now = new Date().getTime();
   const windowMs = windowDays * 86_400_000;
@@ -76,16 +76,15 @@ export function calculateTrainingProgress(
     return { overallStrengthChange: 0, overallVolumeChange: 0, muscleGroups: emptyGroups, weeklyTrend: [] };
   }
 
-  // Recent block is always the latest active week; baseline is the oldest active week in the window (or roughly 4 weeks prior)
+  // Recent block is always the latest active week; baseline is the immediate prior active training week
   const recentWeekKey = sortedWeeks[sortedWeeks.length - 1];
-  const baselineWeekKey = sortedWeeks.length >= 4 ? sortedWeeks[sortedWeeks.length - 4] : sortedWeeks[0];
+  const baselineWeekKey = sortedWeeks.length >= 2 ? sortedWeeks[sortedWeeks.length - 2] : sortedWeeks[0];
 
   const recentSets = weeklyBlocks.get(recentWeekKey) || [];
   const baselineSets = weeklyBlocks.get(baselineWeekKey) || [];
 
   // If baseline and recent point to the exact same single week, we can't compare block-to-block yet
   if (sortedWeeks.length === 1) {
-    // Fallback: evaluate just that single week's volume/strength cleanly
     const muscleGroupSummaries = {} as Record<MuscleGroup, MuscleGroupSummary>;
     let totalVol = 0;
     

@@ -48,8 +48,9 @@ function Dashboard({ userId }: { userId: string }) {
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
 
-
-      <TestModePanel /> 
+      {/* Hide test panel 
+      <TestModePanel /> */}
+      
       
       <FinaliseWeekBanner userId={userId} />
 

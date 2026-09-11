@@ -120,9 +120,8 @@ export function calculateTrainingProgress(
     };
   }
 
-  // Track metrics separately for baseline and recent to avoid cross-contamination
-  const baselineExerciseMap: Map<string, { muscle: MuscleGroup; maxE1rm: number; totalVol: number; setsCount: number }> = new Map();
-  const recentExerciseMap: Map<string, { muscle: MuscleGroup; maxE1rm: number; totalVol: number; setsCount: number }> = new Map();
+  // Compute metrics per exercise for baseline week vs recent week (Restoring OG calculation logic)
+  const exerciseComparison: Map<string, { muscle: MuscleGroup; baseE1rm: number; recentE1rm: number; baseVol: number; recentVol: number; baseSets: number; recentSets: number }> = new Map();
 
   baselineSets.forEach(s => {
     const muscle = getMuscleGroupForExercise(s.exerciseName);
@@ -130,13 +129,13 @@ export function calculateTrainingProgress(
     const e1rm = calculateE1RM(s.weight, s.reps);
     const vol = s.weight * s.reps;
 
-    if (!baselineExerciseMap.has(s.exerciseName)) {
-      baselineExerciseMap.set(s.exerciseName, { muscle, maxE1rm: 0, totalVol: 0, setsCount: 0 });
+    if (!exerciseComparison.has(s.exerciseName)) {
+      exerciseComparison.set(s.exerciseName, { muscle, baseE1rm: 0, recentE1rm: 0, baseVol: 0, recentVol: 0, baseSets: 0, recentSets: 0 });
     }
-    const entry = baselineExerciseMap.get(s.exerciseName)!;
-    entry.totalVol += vol;
-    entry.setsCount += 1;
-    if (e1rm > entry.maxE1rm) entry.maxE1rm = e1rm;
+    const entry = exerciseComparison.get(s.exerciseName)!;
+    entry.baseVol += vol;
+    entry.baseSets += 1;
+    if (e1rm > entry.baseE1rm) entry.baseE1rm = e1rm;
   });
 
   recentSets.forEach(s => {
@@ -145,24 +144,19 @@ export function calculateTrainingProgress(
     const e1rm = calculateE1RM(s.weight, s.reps);
     const vol = s.weight * s.reps;
 
-    if (!recentExerciseMap.has(s.exerciseName)) {
-      recentExerciseMap.set(s.exerciseName, { muscle, maxE1rm: 0, totalVol: 0, setsCount: 0 });
+    if (!exerciseComparison.has(s.exerciseName)) {
+      exerciseComparison.set(s.exerciseName, { muscle, baseE1rm: 0, recentE1rm: 0, baseVol: 0, recentVol: 0, baseSets: 0, recentSets: 0 });
     }
-    const entry = recentExerciseMap.get(s.exerciseName)!;
-    entry.totalVol += vol;
-    entry.setsCount += 1;
-    if (e1rm > entry.maxE1rm) entry.maxE1rm = e1rm;
+    const entry = exerciseComparison.get(s.exerciseName)!;
+    entry.recentVol += vol;
+    entry.recentSets += 1;
+    if (e1rm > entry.recentE1rm) entry.recentE1rm = e1rm;
   });
 
   const muscleVolumeBase: Record<MuscleGroup, number> = { Chest: 0, Back: 0, Shoulders: 0, Biceps: 0, Triceps: 0, Legs: 0 };
   const muscleVolumeRecent: Record<MuscleGroup, number> = { Chest: 0, Back: 0, Shoulders: 0, Biceps: 0, Triceps: 0, Legs: 0 };
   let totalVolumeBase = 0;
   let totalVolumeRecent = 0;
-
-  baselineExerciseMap.forEach((data, exerciseName) => {
-    muscleVolumeBase[data.muscle] += data.totalVol;
-    totalVolumeBase += data.totalVol;
-  });
 
   const muscleStrengthChanges: Record<MuscleGroup, { totalWeightedChange: number; totalWeight: number }> = {
     Chest: { totalWeightedChange: 0, totalWeight: 0 },
@@ -177,29 +171,33 @@ export function calculateTrainingProgress(
     Chest: [], Back: [], Shoulders: [], Biceps: [], Triceps: [], Legs: []
   };
 
-  recentExerciseMap.forEach((recentData, exerciseName) => {
-    muscleVolumeRecent[recentData.muscle] += recentData.totalVol;
-    totalVolumeRecent += recentData.totalVol;
+  exerciseComparison.forEach((data, exerciseName) => {
+    muscleVolumeBase[data.muscle] += data.baseVol;
+    muscleVolumeRecent[data.muscle] += data.recentVol;
+    totalVolumeBase += data.baseVol;
+    totalVolumeRecent += data.recentVol;
 
-    const baseData = baselineExerciseMap.get(exerciseName);
-    const baseE1rm = baseData ? baseData.maxE1rm : 0;
-    const recentE1rm = recentData.maxE1rm;
+    if (data.baseE1rm > 0 && data.recentE1rm > 0) {
+      const exChange = ((data.recentE1rm - data.baseE1rm) / data.baseE1rm) * 100;
+      const weight = data.recentSets + data.baseSets;
 
-    let exStrengthChange = 0;
-    if (baseE1rm > 0 && recentE1rm > 0) {
-      exStrengthChange = Math.round(((recentE1rm - baseE1rm) / baseE1rm) * 1000) / 10;
-      const weight = recentData.setsCount + (baseData ? baseData.setsCount : 0);
-      muscleStrengthChanges[recentData.muscle].totalWeightedChange += exStrengthChange * weight;
-      muscleStrengthChanges[recentData.muscle].totalWeight += weight;
+      muscleStrengthChanges[data.muscle].totalWeightedChange += exChange * weight;
+      muscleStrengthChanges[data.muscle].totalWeight += weight;
     }
 
-    muscleExercises[recentData.muscle].push({
-      exerciseName,
-      currentE1RM: recentE1rm,
-      baselineE1RM: baseE1rm,
-      percentChange: exStrengthChange,
-      currentVolume: recentData.totalVol,
-    });
+    if (data.recentVol > 0) {
+      let percentChange = 0;
+      if (data.baseE1rm > 0 && data.recentE1rm > 0) {
+        percentChange = Math.round(((data.recentE1rm - data.baseE1rm) / data.baseE1rm) * 1000) / 10;
+      }
+      muscleExercises[data.muscle].push({
+        exerciseName,
+        currentE1RM: data.recentE1rm,
+        baselineE1RM: data.baseE1rm,
+        percentChange,
+        currentVolume: data.recentVol,
+      });
+    }
   });
 
   const overallVolumeChange = totalVolumeBase > 0 

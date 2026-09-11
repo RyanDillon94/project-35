@@ -66,11 +66,31 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     habitBreakdown: { label: string; completed: number; total: number }[];
     journals: string[];
     aiSummary: string;
+    hasWeighedInToday: boolean;
   } | null>(null);
 
   const calculateWeekData = useCallback(() => {
-    const today = new Date(todayKey() + "T00:00:00Z");
+    const todayStr = todayKey();
+    const today = new Date(todayStr + "T00:00:00Z");
     const isSunday = today.getUTCDay() === 0;
+
+    // Check if a weigh-in entry exists for today's date
+    let hasWeighedInToday = false;
+    try {
+      // Check standard keys or hook storage pattern for weigh-ins
+      const rawWeights = userId 
+        ? localStorage.getItem(`p35_weigh_ins_${userId}`) || localStorage.getItem("p35_weigh_ins")
+        : localStorage.getItem("p35_weigh_ins");
+      
+      if (rawWeights) {
+        const parsedEntries = JSON.parse(rawWeights);
+        if (Array.isArray(parsedEntries)) {
+          hasWeighedInToday = parsedEntries.some((e: any) => e.date === todayStr);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check weigh-in history:", err);
+    }
 
     const startDate = new Date("2026-09-07T00:00:00Z");
     const diffTime = Math.abs(today.getTime() - startDate.getTime());
@@ -160,8 +180,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       aiSummary: prev?.aiSummary && hasGenerated 
         ? prev.aiSummary 
         : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
+      hasWeighedInToday,
     }));
-  }, [hasGenerated]);
+  }, [hasGenerated, userId]);
 
   useEffect(() => {
     calculateWeekData();
@@ -225,8 +246,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   };
 
   const handleLockInWeek = async () => {
-    if (!summaryData) {
-      setIsOpen(false);
+    if (!summaryData || !summaryData.hasWeighedInToday) {
       return;
     }
 
@@ -360,8 +380,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 )}
               </div>
 
-              <Button className="w-full" onClick={() => void handleLockInWeek()}>
-                Lock In & Close Summary
+              <Button 
+                className="w-full" 
+                disabled={!summaryData.hasWeighedInToday} 
+                onClick={() => void handleLockInWeek()}
+              >
+                {summaryData.hasWeighedInToday ? "Lock In & Close Summary" : "Weekly Weight Needed First"}
               </Button>
             </div>
           </DialogContent>

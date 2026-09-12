@@ -205,7 +205,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     calculateWeekData();
   }, [calculateWeekData]);
 
-  // Handle updating protocol goal status directly inside the modal
   const handleUpdateGoalStatus = (id: string, status: "completed" | "failed") => {
     if (!summaryData) return;
 
@@ -222,7 +221,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     setSummaryData({ ...summaryData, weeklyProtocolGoals: updatedGoals });
 
-    // Sync back to localStorage immediately so it updates both the card and archive
     const mondayKey = getCurrentMondayKey();
     localStorage.setItem(`p35_weekly_protocol_${mondayKey}`, JSON.stringify(updatedGoals));
     toast.success(`Target marked as ${status === "completed" ? "Smashed" : "Failed"}.`);
@@ -238,7 +236,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       return;
     }
 
-    setLoadingAi(true);
+    setLoadingAi$ : setLoadingAi(true);
     try {
       const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
       const breakdownText = summaryData.habitBreakdown
@@ -247,13 +245,13 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         
       const protocolText = summaryData.weeklyProtocolGoals.length > 0
         ? summaryData.weeklyProtocolGoals
-            .map((g) => `- [STATUS: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}] ${g.text}`)
+            .map((g) => `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}]`)
             .join("\n")
         : "No weekly execution focus targets logged.";
 
-      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nWeekly Execution Protocol Targets (Audited Status):\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = "Review my completed week based on my performance data, weekly execution protocol targets, and journal notes. You MUST explicitly evaluate every single Weekly Execution Protocol target listed based on its confirmed status (COMPLETED vs FAILED vs PENDING)—rigorously critique any targets left unfulfilled or confirmed failed. Provide a sharp, direct weekly synthesis blending my execution together into a cohesive narrative, and give a direct verdict on my performance across both physical habits and lifestyle focus targets. If compliance or protocol targets are incomplete, tell me to sort my shit out.";
+      const userPrompt = "Review my completed week based on my performance data, weekly execution protocol targets, and journal notes. Seamlessly weave my weekly execution protocol targets (and their confirmed Smashed/Failed/Pending status) into your standard narrative and verdict sections rather than creating a separate rigid checklist block. Maintain a sharp, direct, conversational coaching tone blending physical adherence and lifestyle execution. If compliance or protocol targets are incomplete, tell me to sort my shit out.";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {

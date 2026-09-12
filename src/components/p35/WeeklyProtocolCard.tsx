@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { todayKey } from "@/lib/project35";
 
 export type WeeklyProtocolGoal = {
   id: string;
@@ -11,24 +12,28 @@ export type WeeklyProtocolGoal = {
   status?: "completed" | "failed" | "pending";
 };
 
-function getCurrentMondayKey() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
+// Derive Monday key based on a given date string or today
+function getMondayKeyForDate(dateStr?: string) {
+  const baseDate = dateStr ? new Date(dateStr + "T00:00:00Z") : new Date();
+  const day = baseDate.getUTCDay();
+  const diff = baseDate.getUTCDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(baseDate.setUTCDate(diff));
   return monday.toISOString().slice(0, 10);
 }
 
-function isTodayMonday() {
-  return new Date().getDay() === 1;
+function isDateMonday(dateStr?: string) {
+  const baseDate = dateStr ? new Date(dateStr + "T00:00:00Z") : new Date();
+  return baseDate.getUTCDay() === 1;
 }
 
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard() {
-  const mondayKey = getCurrentMondayKey();
+  // Use todayKey() so it respects the Test Mode simulated date engine
+  const activeDate = todayKey();
+  const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
-  const isMonday = isTodayMonday();
+  const isMonday = isDateMonday(activeDate);
 
   const [goals, setGoals] = useState<WeeklyProtocolGoal[]>(() => {
     try {
@@ -43,6 +48,20 @@ export function WeeklyProtocolCard() {
   });
 
   const [newGoalText, setNewGoalText] = useState("");
+
+  // Re-sync when the active simulated date / mondayKey changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        setGoals(JSON.parse(saved));
+      } else if (isMonday) {
+        setGoals([]);
+      }
+    } catch {
+      setGoals([]);
+    }
+  }, [storageKey, isMonday]);
 
   useEffect(() => {
     try {

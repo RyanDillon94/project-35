@@ -12,8 +12,7 @@ export type WeeklyProtocolGoal = {
   status?: "completed" | "failed" | "pending";
 };
 
-// Derive Monday key based on a given date string or today
-function getMondayKeyForDate(dateStr?: string) {
+export function getMondayKeyForDate(dateStr?: string) {
   const baseDate = dateStr ? new Date(dateStr + "T00:00:00Z") : new Date();
   const day = baseDate.getUTCDay();
   const diff = baseDate.getUTCDate() - day + (day === 0 ? -6 : 1);
@@ -21,7 +20,7 @@ function getMondayKeyForDate(dateStr?: string) {
   return monday.toISOString().slice(0, 10);
 }
 
-function isDateMonday(dateStr?: string) {
+export function isDateMonday(dateStr?: string) {
   const baseDate = dateStr ? new Date(dateStr + "T00:00:00Z") : new Date();
   return baseDate.getUTCDay() === 1;
 }
@@ -29,7 +28,6 @@ function isDateMonday(dateStr?: string) {
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard() {
-  // Use todayKey() so it respects the Test Mode simulated date engine
   const activeDate = todayKey();
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
@@ -49,13 +47,14 @@ export function WeeklyProtocolCard() {
 
   const [newGoalText, setNewGoalText] = useState("");
 
-  // Re-sync when the active simulated date / mondayKey changes
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         setGoals(JSON.parse(saved));
       } else if (isMonday) {
+        setGoals([]);
+      } else {
         setGoals([]);
       }
     } catch {

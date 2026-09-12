@@ -41,31 +41,40 @@ export const askCoach = createServerFn({ method: "POST" })
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("AI is not configured yet.");
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+
+    const systemInstructionText = data.context 
+      ? `${SYSTEM}\n\nAthlete data:\n${data.context}` 
+      : SYSTEM;
+
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Lovable-API-Key": apiKey,
-        "X-Lovable-AIG-SDK": "fetch",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.8-flash",
-        messages: [
-          { role: "system", content: SYSTEM },
-          ...(data.context ? [{ role: "system" as const, content: `Athlete data:\n${data.context}` }] : []),
-          ...data.messages,
-        ],
+        systemInstruction: {
+          parts: [{ text: systemInstructionText }]
+        },
+        contents: data.messages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
       }),
     });
 
     if (res.status === 429) throw new Error("Coach is rate limited. Try again in a moment.");
     if (res.status === 402) throw new Error("AI credits are exhausted. Add credits to keep coaching.");
-    if (!res.ok) throw new Error(`Coach request failed (${res.status}).`);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `Coach request failed (${res.status}).`);
+    }
 
     const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
-    const reply = json.choices?.[0]?.message?.content?.trim();
+    
+    const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!reply) throw new Error("Coach returned an empty answer.");
     return { reply };
   });

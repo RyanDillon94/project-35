@@ -33,6 +33,10 @@ export function WeeklyProtocolCard() {
   const [goals, setGoals] = useState<WeeklyProtocolGoal[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
+      // If it's Monday and nothing has been explicitly saved for *this* Monday's key yet, start empty
+      if (!saved && isMonday) {
+        return [];
+      }
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -122,7 +126,7 @@ export function WeeklyProtocolCard() {
               <div
                 key={goal.id}
                 className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-colors ${
-                  currentStatus === "completed" 
+                  currentStatus ===="completed" 
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" 
                     : currentStatus === "failed"
                     ? "border-rose-500/30 bg-rose-500/10 text-rose-300 line-through opacity-80"

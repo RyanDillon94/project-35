@@ -11,6 +11,7 @@ import {
 import { triggerFridayBackup } from "@/lib/p35-cloud";
 import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getMondayKeyForDate } from "./WeeklyProtocolCard";
 
 function getCoachSystemPrompt() {
   const { activePhase, activeBlock } = getActiveBlockDetails();
@@ -53,14 +54,6 @@ function FormattedSynthesis({ text }: { text: string }) {
   );
 }
 
-function getCurrentMondayKey() {
-  const d = new Date();
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d.setDate(diff));
-  return monday.toISOString().slice(0, 10);
-}
-
 export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -99,7 +92,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       console.error("Failed to check weigh-in history:", err);
     }
 
-    const mondayKey = getCurrentMondayKey();
+    const activeDate = todayKey();
+    const mondayKey = getMondayKeyForDate(activeDate);
     const rawProtocol = localStorage.getItem(`p35_weekly_protocol_${mondayKey}`);
     const weeklyProtocolGoals = rawProtocol 
       ? JSON.parse(rawProtocol).map((g: any) => ({
@@ -221,7 +215,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     setSummaryData({ ...summaryData, weeklyProtocolGoals: updatedGoals });
 
-    const mondayKey = getCurrentMondayKey();
+    const activeDate = todayKey();
+    const mondayKey = getMondayKeyForDate(activeDate);
     localStorage.setItem(`p35_weekly_protocol_${mondayKey}`, JSON.stringify(updatedGoals));
     toast.success(`Target marked as ${status === "completed" ? "Smashed" : "Failed"}.`);
   };
@@ -236,7 +231,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       return;
     }
 
-    setLoadingAi$ : setLoadingAi(true);
+    setLoadingAi(true);
     try {
       const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
       const breakdownText = summaryData.habitBreakdown
@@ -463,29 +458,4 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 </div>
                 {loadingAi ? (
                   <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
-                    <Loader2 className="size-4 animate-spin text-primary" />
-                    <span>Synthesizing journal notes and protocol standards...</span>
-                  </div>
-                ) : hasGenerated ? (
-                  <FormattedSynthesis text={summaryData.aiSummary} />
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">
-                    {summaryData.aiSummary}
-                  </p>
-                )}
-              </div>
-
-              <Button 
-                className="w-full" 
-                disabled={!summaryData.hasWeighedInToday} 
-                onClick={() => void handleLockInWeek()}
-              >
-                {summaryData.hasWeighedInToday ? "Lock In & Close Summary" : "Weekly Weight Needed First"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
-  );
-}
+                    <Loader2 cla

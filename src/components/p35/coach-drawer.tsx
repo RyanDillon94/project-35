@@ -107,7 +107,8 @@ async function callGemini(
   newPrompt: string,
   systemContext: string,
 ) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+  // Upgraded to gemini-3.8-flash for instant responses and lightning-fast streaming/generation
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
 
   const contents = [
     ...history.map((m) => ({
@@ -198,10 +199,18 @@ export function CoachDrawer({
   const [draftApiKey, setDraftApiKey] = useState(apiKey);
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    useEffect(() => {
+  // Auto-expand textarea handler
+  const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    const target = e.target;
+    target.style.height = "auto";
+    target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+  };
+
+  useEffect(() => {
     if (!open) return;
-    // Small timeout ensures the sheet content is fully rendered before jumping to bottom
     const timer = setTimeout(() => {
       endRef.current?.scrollIntoView({ behavior: "auto" });
     }, 50);
@@ -232,6 +241,9 @@ export function CoachDrawer({
     }
 
     setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
     setLoading(true);
 
     try {
@@ -307,7 +319,7 @@ export function CoachDrawer({
             <div ref={endRef} />
           </div>
 
-          <div className="space-y-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="space-y-2 border-t border-border px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-surface-2/40">
             <Button
               variant="secondary"
               className="w-full"
@@ -319,22 +331,30 @@ export function CoachDrawer({
               <Sparkles className="size-4" /> Analyse Workout & Progression
             </Button>
             <form
-              className="flex gap-2"
+              className="flex items-end gap-2 bg-surface-2 border border-border rounded-xl p-2 focus-within:border-primary transition-colors"
               onSubmit={(e) => {
                 e.preventDefault();
                 void send(input);
               }}
             >
-              <Input
+              <textarea
+                ref={textareaRef}
+                rows={1}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputResize}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void send(input);
+                  }
+                }}
                 placeholder="Ask about a lift, swap, or current phase..."
-                className="h-11"
+                className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none max-h-32 py-1.5 px-1 leading-relaxed"
               />
               <Button
                 type="submit"
                 size="icon"
-                className="size-11 shrink-0"
+                className="size-10 shrink-0 mb-0.5"
                 disabled={loading || !input.trim()}
               >
                 <Send className="size-4" />

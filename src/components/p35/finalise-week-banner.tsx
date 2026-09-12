@@ -458,4 +458,29 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 </div>
                 {loadingAi ? (
                   <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
-                    <Loader2 cla
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    <span>Synthesizing journal notes and protocol standards...</span>
+                  </div>
+                ) : hasGenerated ? (
+                  <FormattedSynthesis text={summaryData.aiSummary} />
+                ) : (
+                  <p className="text-xs text-muted-foreground italic py-2">
+                    {summaryData.aiSummary}
+                  </p>
+                )}
+              </div>
+
+              <Button 
+                className="w-full" 
+                disabled={!summaryData.hasWeighedInToday} 
+                onClick={() => void handleLockInWeek()}
+              >
+                {summaryData.hasWeighedInToday ? "Lock In & Close Summary" : "Weekly Weight Needed First"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}

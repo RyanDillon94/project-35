@@ -9,7 +9,7 @@ import {
   GOAL_WEIGHT 
 } from "@/lib/project35";
 import { triggerFridayBackup } from "@/lib/p35-cloud";
-import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, Target } from "lucide-react";
+import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 function getCoachSystemPrompt() {
@@ -53,7 +53,6 @@ function FormattedSynthesis({ text }: { text: string }) {
   );
 }
 
-// Helper to get the Monday key for the current week
 function getCurrentMondayKey() {
   const d = new Date();
   const day = d.getDay();
@@ -73,7 +72,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalCompleted: number;
     overallPercentage: number;
     habitBreakdown: { label: string; completed: number; total: number }[];
-    weeklyProtocolGoals: { id: string; text: string; completed: boolean }[];
+    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending" }[];
     journals: string[];
     aiSummary: string;
     hasWeighedInToday: boolean;
@@ -84,7 +83,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const today = new Date(todayStr + "T00:00:00Z");
     const isSunday = today.getUTCDay() === 0;
 
-    // Check if a weigh-in entry exists for today's date
     let hasWeighedInToday = false;
     try {
       const rawWeights = userId 
@@ -101,10 +99,14 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       console.error("Failed to check weigh-in history:", err);
     }
 
-    // Fetch Weekly Execution Protocol targets for this week
     const mondayKey = getCurrentMondayKey();
     const rawProtocol = localStorage.getItem(`p35_weekly_protocol_${mondayKey}`);
-    const weeklyProtocolGoals = rawProtocol ? JSON.parse(rawProtocol) : [];
+    const weeklyProtocolGoals = rawProtocol 
+      ? JSON.parse(rawProtocol).map((g: any) => ({
+          ...g,
+          status: g.status || (g.completed ? "completed" : "pending")
+        })) 
+      : [];
 
     const startDate = new Date("2026-09-07T00:00:00Z");
     const diffTime = Math.abs(today.getTime() - startDate.getTime());
@@ -203,6 +205,29 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     calculateWeekData();
   }, [calculateWeekData]);
 
+  // Handle updating protocol goal status directly inside the modal
+  const handleUpdateGoalStatus = (id: string, status: "completed" | "failed") => {
+    if (!summaryData) return;
+
+    const updatedGoals = summaryData.weeklyProtocolGoals.map((g) => {
+      if (g.id === id) {
+        return {
+          ...g,
+          status,
+          completed: status === "completed",
+        };
+      }
+      return g;
+    });
+
+    setSummaryData({ ...summaryData, weeklyProtocolGoals: updatedGoals });
+
+    // Sync back to localStorage immediately so it updates both the card and archive
+    const mondayKey = getCurrentMondayKey();
+    localStorage.setItem(`p35_weekly_protocol_${mondayKey}`, JSON.stringify(updatedGoals));
+    toast.success(`Target marked as ${status === "completed" ? "Smashed" : "Failed"}.`);
+  };
+
   const generateAiSummary = async () => {
     if (!summaryData) return;
     
@@ -221,12 +246,14 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         .join("\n");
         
       const protocolText = summaryData.weeklyProtocolGoals.length > 0
-        ? summaryData.weeklyProtocolGoals.map((g) => `- [${g.completed ? "COMPLETED" : "INCOMPLETE"}] ${g.text}`).join("\n")
+        ? summaryData.weeklyProtocolGoals
+            .map((g) => `- [STATUS: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}] ${g.text}`)
+            .join("\n")
         : "No weekly execution focus targets logged.";
 
-      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nWeekly Execution Protocol Targets (Audited Status):\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = "Review my completed week based on my performance data, weekly execution protocol targets, and journal notes. Provide a sharp, direct weekly synthesis blending my execution together into a cohesive narrative, and give a direct verdict on my performance across both physical habits and lifestyle focus targets. If compliance is low, tell me to sort my shit out.";
+      const userPrompt = "Review my completed week based on my performance data, weekly execution protocol targets, and journal notes. You MUST explicitly evaluate every single Weekly Execution Protocol target listed based on its confirmed status (COMPLETED vs FAILED vs PENDING)—rigorously critique any targets left unfulfilled or confirmed failed. Provide a sharp, direct weekly synthesis blending my execution together into a cohesive narrative, and give a direct verdict on my performance across both physical habits and lifestyle focus targets. If compliance or protocol targets are incomplete, tell me to sort my shit out.";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
@@ -372,18 +399,50 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
               {summaryData.weeklyProtocolGoals.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
-                  <div className="space-y-1.5 rounded-lg border border-border bg-surface-2/40 p-3">
-                    {summaryData.weeklyProtocolGoals.map((g) => (
-                      <div key={g.id} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
-                        <span className={`font-medium ${g.completed ? "text-emerald-400 line-through opacity-80" : "text-foreground"}`}>
-                          {g.text}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${g.completed ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
-                          {g.completed ? "Done" : "Pending"}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
+                    <span className="text-[10px] text-muted-foreground italic">Confirm status before generating AI audit</span>
+                  </div>
+                  <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
+                    {summaryData.weeklyProtocolGoals.map((g) => {
+                      const currentStatus = g.status || (g.completed ? "completed" : "pending");
+                      return (
+                        <div key={g.id} className="flex flex-col gap-2 py-2 border-b border-border/40 last:border-0">
+                          <span className={`text-xs font-medium ${currentStatus === "completed" ? "text-emerald-400" : currentStatus === "failed" ? "text-rose-400 line-through opacity-80" : "text-foreground"}`}>
+                            {g.text}
+                          </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              currentStatus === "completed" 
+                                ? "bg-emerald-500/20 text-emerald-300" 
+                                : currentStatus === "failed" 
+                                ? "bg-rose-500/20 text-rose-300" 
+                                : "bg-amber-500/20 text-amber-300"
+                            }`}>
+                              {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : "Pending"}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant={currentStatus === "completed" ? "default" : "outline"}
+                                className="h-6 px-2 text-[10px] gap-1"
+                                onClick={() => handleUpdateGoalStatus(g.id, "completed")}
+                              >
+                                <CheckCircle className="size-3" /> Confirm Smashed
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={currentStatus === "failed" ? "destructive" : "outline"}
+                                className="h-6 px-2 text-[10px] gap-1"
+                                onClick={() => handleUpdateGoalStatus(g.id, "failed")}
+                              >
+                                <XCircle className="size-3" /> Confirm Failed
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

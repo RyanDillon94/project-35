@@ -9,7 +9,7 @@ import {
   GOAL_WEIGHT 
 } from "@/lib/project35";
 import { triggerFridayBackup } from "@/lib/p35-cloud";
-import { CalendarCheck, Camera, Loader2, Sparkles, Trophy } from "lucide-react";
+import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, Target } from "lucide-react";
 import { toast } from "sonner";
 
 function getCoachSystemPrompt() {
@@ -53,6 +53,15 @@ function FormattedSynthesis({ text }: { text: string }) {
   );
 }
 
+// Helper to get the Monday key for the current week
+function getCurrentMondayKey() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d.setDate(diff));
+  return monday.toISOString().slice(0, 10);
+}
+
 export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -64,6 +73,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalCompleted: number;
     overallPercentage: number;
     habitBreakdown: { label: string; completed: number; total: number }[];
+    weeklyProtocolGoals: { id: string; text: string; completed: boolean }[];
     journals: string[];
     aiSummary: string;
     hasWeighedInToday: boolean;
@@ -77,7 +87,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     // Check if a weigh-in entry exists for today's date
     let hasWeighedInToday = false;
     try {
-      // Check standard keys or hook storage pattern for weigh-ins
       const rawWeights = userId 
         ? localStorage.getItem(`p35_weigh_ins_${userId}`) || localStorage.getItem("p35_weigh_ins")
         : localStorage.getItem("p35_weigh_ins");
@@ -91,6 +100,11 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     } catch (err) {
       console.error("Failed to check weigh-in history:", err);
     }
+
+    // Fetch Weekly Execution Protocol targets for this week
+    const mondayKey = getCurrentMondayKey();
+    const rawProtocol = localStorage.getItem(`p35_weekly_protocol_${mondayKey}`);
+    const weeklyProtocolGoals = rawProtocol ? JSON.parse(rawProtocol) : [];
 
     const startDate = new Date("2026-09-07T00:00:00Z");
     const diffTime = Math.abs(today.getTime() - startDate.getTime());
@@ -176,6 +190,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       totalCompleted: totalCompletedChecks,
       overallPercentage,
       habitBreakdown: finalizedBreakdown,
+      weeklyProtocolGoals,
       journals,
       aiSummary: prev?.aiSummary && hasGenerated 
         ? prev.aiSummary 
@@ -204,10 +219,14 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       const breakdownText = summaryData.habitBreakdown
         .map((h) => `- ${h.label}: ${h.completed}/${h.total}`)
         .join("\n");
+        
+      const protocolText = summaryData.weeklyProtocolGoals.length > 0
+        ? summaryData.weeklyProtocolGoals.map((g) => `- [${g.completed ? "COMPLETED" : "INCOMPLETE"}] ${g.text}`).join("\n")
+        : "No weekly execution focus targets logged.";
 
-      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nDaily Journal Notes:\n${journalText}`;
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = "Review my completed week based on my performance data and journal notes. Provide a sharp, direct weekly synthesis blending my journal reflections together into a cohesive narrative, and give a direct verdict on my execution. If compliance is low, tell me to sort my shit out.";
+      const userPrompt = "Review my completed week based on my performance data, weekly execution protocol targets, and journal notes. Provide a sharp, direct weekly synthesis blending my execution together into a cohesive narrative, and give a direct verdict on my performance across both physical habits and lifestyle focus targets. If compliance is low, tell me to sort my shit out.";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
@@ -259,6 +278,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       totalCompleted: summaryData.totalCompleted ?? 0,
       totalPossible: summaryData.totalPossible ?? 0,
       breakdown: summaryData.habitBreakdown ?? [],
+      weeklyProtocolGoals: summaryData.weeklyProtocolGoals ?? [],
       aiSynthesis: summaryData.aiSummary ?? "",
     };
 
@@ -297,7 +317,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           </div>
           <div>
             <h3 className="text-sm font-bold text-foreground">Sunday: Finalise Week</h3>
-            <p className="text-xs text-muted-foreground">Review metrics, synthesize journals, and lock in the week.</p>
+            <p className="text-xs text-muted-foreground">Review metrics, protocol targets, synthesize journals, and lock in.</p>
           </div>
         </div>
 
@@ -350,6 +370,24 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 </div>
               </div>
 
+              {summaryData.weeklyProtocolGoals.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
+                  <div className="space-y-1.5 rounded-lg border border-border bg-surface-2/40 p-3">
+                    {summaryData.weeklyProtocolGoals.map((g) => (
+                      <div key={g.id} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
+                        <span className={`font-medium ${g.completed ? "text-emerald-400 line-through opacity-80" : "text-foreground"}`}>
+                          {g.text}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${g.completed ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
+                          {g.completed ? "Done" : "Pending"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-lg border border-primary/30 bg-surface-2/60 p-3.5 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -369,7 +407,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 {loadingAi ? (
                   <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
                     <Loader2 className="size-4 animate-spin text-primary" />
-                    <span>Synthesizing journal notes and performance...</span>
+                    <span>Synthesizing journal notes and protocol standards...</span>
                   </div>
                 ) : hasGenerated ? (
                   <FormattedSynthesis text={summaryData.aiSummary} />

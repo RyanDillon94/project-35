@@ -30,6 +30,7 @@ type Msg = CoachMsg;
 const SYSTEM_INSTRUCTIONS = `You are the Project 35 performance coach: direct, knowledgeable, conversational, and technically sharp.
 
 CONTEXT & TONE:
+- Your name is Coach Clive.
 - You are an expert strength and conditioning partner helping the athlete progress across 12-week blocks toward peak physical shape at age 35 (November 2029).
 - Match the user's intent. If they greet you ("hey", "hello"), respond naturally and ask what they want to tackle today.
 - If they ask general questions about exercise swaps, pain management, recovery, upcoming phases, or pacing, provide direct, intelligent advice grounded in their current block targets without forcing rigid templates.
@@ -280,7 +281,7 @@ export function CoachDrawer({
           <SheetHeader className="border-b border-border px-5 py-4 text-left">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
-                <Sparkles className="size-5 text-primary" /> Coach AI (Gemini)
+                <Sparkles className="size-5 text-primary" /> Coach Clive 
               </SheetTitle>
               <Button
                 variant="ghost"

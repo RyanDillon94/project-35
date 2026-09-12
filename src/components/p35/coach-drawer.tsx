@@ -22,7 +22,7 @@ import type { HevyWorkout } from "@/lib/hevy.functions";
 import type { WeightEntry } from "@/components/p35/weight-card";
 import { DAILY_TARGETS, GOAL_WEIGHT, getActiveBlockCountdown } from "@/lib/project35";
 import { useCoachMessages, type CoachMsg } from "@/lib/p35-cloud";
-import { KeyRound, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { KeyRound, Loader2, MessageSquare, RefreshCw, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 type Msg = CoachMsg;
@@ -100,14 +100,12 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   return lines.join("\n");
 }
 
-
 async function callGemini(
   apiKey: string,
   history: CoachMsg[],
   newPrompt: string,
   systemContext: string,
 ) {
-  // Upgraded to gemini-3.8-flash for instant responses and lightning-fast streaming/generation
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
 
   const contents = [
@@ -133,6 +131,10 @@ async function callGemini(
     }),
   });
 
+  if (res.status === 429) {
+    throw new Error("Coach is busy with high demand. Tap retry in a moment.");
+  }
+
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error?.message || `Gemini request failed (${res.status})`);
@@ -145,15 +147,13 @@ async function callGemini(
 }
 
 function CoachText({ text }: { text: string }) {
-  // Clean up markdown headers and format sections
   const cleanedText = text
-    .replace(/^#{1,6}\s+/gm, "") // Strip markdown hashes
+    .replace(/^#{1,6}\s+/gm, "")
     .replace(/^\s*[*-]\s+/gm, "• ");
 
   return (
     <div className="space-y-1.5 whitespace-pre-wrap">
       {cleanedText.split("\n").map((line, idx) => {
-        // Check if line looks like a major section header (e.g. ALL CAPS or ends with colon)
         const isHeader = /^[A-Z\s]{4,}:?$/.test(line.trim()) || line.trim().startsWith("WORKOUT ANALYSIS");
 
         if (isHeader) {
@@ -195,13 +195,13 @@ export function CoachDrawer({
   const { messages, add } = useCoachMessages(userId);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastFailedPrompt, setLastFailedPrompt] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("p35_gemini_api_key") || "");
   const [draftApiKey, setDraftApiKey] = useState(apiKey);
   const [keyDialogOpen, setKeyDialogOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-expand textarea handler
   const handleInputResize = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     const target = e.target;
@@ -245,6 +245,7 @@ export function CoachDrawer({
       textareaRef.current.style.height = "auto";
     }
     setLoading(true);
+    setLastFailedPrompt(null);
 
     try {
       const currentHistory = [...messages];
@@ -257,7 +258,11 @@ export function CoachDrawer({
       );
       await add.mutateAsync({ role: "assistant", content: reply });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Coach is unavailable.");
+      const errorMessage = error instanceof Error ? error.message : "Coach is unavailable.";
+      toast.error(errorMessage);
+      if (errorMessage.includes("busy") || errorMessage.includes("rate limited")) {
+        setLastFailedPrompt(trimmed);
+      }
     } finally {
       setLoading(false);
     }
@@ -316,6 +321,19 @@ export function CoachDrawer({
                 <Loader2 className="size-4 animate-spin" /> Thinking...
               </div>
             )}
+            {lastFailedPrompt && !loading && (
+              <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
+                <span>Coach is currently busy with high demand.</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-7 border-rose-500/40 hover:bg-rose-500/20 text-rose-300"
+                  onClick={() => void send(lastFailedPrompt)}
+                >
+                  <RefreshCw className="size-3.5" /> Retry
+                </Button>
+              </div>
+            )}
             <div ref={endRef} />
           </div>
 
@@ -342,12 +360,6 @@ export function CoachDrawer({
                 rows={1}
                 value={input}
                 onChange={handleInputResize}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void send(input);
-                  }
-                }}
                 placeholder="Ask about a lift, swap, or current phase..."
                 className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none max-h-32 py-1.5 px-1 leading-relaxed"
               />

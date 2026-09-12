@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { DashboardHeader } from "@/components/p35/header";
 import { NonNegotiables } from "@/components/p35/non-negotiables";
+import { WeeklyProtocolCard } from "@/components/p35/WeeklyProtocolCard";
 import { PhotoCheckpoint } from "@/components/p35/photo-checkpoint";
 import { WeightCard } from "@/components/p35/weight-card";
 import { HevyCard } from "@/components/p35/hevy-card";
@@ -56,6 +57,7 @@ function Dashboard({ userId }: { userId: string }) {
 
       <DashboardHeader />
       <NonNegotiables userId={userId} />
+      <WeeklyProtocolCard />
       <HevyCard
         workout={workout}
         apiKey={hevyApiKey}

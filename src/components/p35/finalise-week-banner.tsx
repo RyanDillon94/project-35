@@ -333,6 +333,15 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const weekKey = `p35_finalised_week_${todayStr}`;
     const overallPct = summaryData.overallPercentage ?? 0;
     
+    // Grab all p35_ keys from localStorage to ensure full backup payload parity with export
+    const fullBackupData: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("p35_")) {
+        fullBackupData[key] = localStorage.getItem(key) || "";
+      }
+    }
+
     const weekArchiveRecord = {
       date: todayStr,
       overallPercentage: overallPct,
@@ -341,6 +350,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       breakdown: summaryData.habitBreakdown ?? [],
       weeklyProtocolGoals: summaryData.weeklyProtocolGoals ?? [],
       aiSynthesis: summaryData.aiSummary ?? "",
+      fullLocalStorageSnapshot: fullBackupData, // Bundles complete app state
     };
 
     try {
@@ -353,7 +363,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     setIsOpen(false);
     calculateWeekData();
 
-    // Force dispatch a custom event so the index page updates instantly
     window.dispatchEvent(new Event("p35-week-finalised"));
 
     if (overallPct < 50) {

@@ -120,7 +120,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     let totalCompletedChecks = 0;
     const journals: string[] = [];
 
-    // Loop through the last 7 days (Monday through Sunday)
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
@@ -145,7 +144,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           labelLower.includes("6:00 am") || 
           labelLower.includes("early morning");
 
-        // If it's a weekend, skip weekday-only habits entirely so they don't leak counts
         if (isWeekend && isWeekdayOnly) {
           return;
         }
@@ -185,7 +183,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     const habitScore = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
 
-    // Blend protocol targets into final score (70% habits, 30% weekly protocol if present)
     let protocolScore = -1;
     if (weeklyProtocolGoals.length > 0) {
       const protocolCompleted = weeklyProtocolGoals.filter((g: any) => g.completed || g.status === "completed").length;
@@ -457,4 +454,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                                 className="h-6 px-2 text-[10px] gap-1"
                                 onClick={() => handleUpdateGoalStatus(g.id, "completed")}
                               >
-                                <CheckCircle className
+                                <CheckCircle className="size-3" /> Confirm Smashed
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={currentStatus === "failed" ? "destructive" : "outlin

@@ -91,7 +91,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           hasWeighedInToday = parsedEntries.some((e: any) => e.date === todayStr);
           weightHistory = parsedEntries
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 5); // Grab recent 5 entries for context
+            .slice(0, 5);
         }
       }
     } catch (err) {
@@ -139,11 +139,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       dayHabits.forEach((h) => {
         const labelLower = h.label.toLowerCase();
         const isWeekdayOnly = 
-          h.key === "workout_complete" || 
           h.key === "early_morning" || 
-          labelLower.includes("workout") || 
-          labelLower.includes("6:00 am");
+          h.key === "workout_complete" ||
+          labelLower.includes("6:00 am") || 
+          labelLower.includes("early morning");
 
+        // Skip weekday-only habits entirely if it's the weekend
         if (isWeekend && isWeekdayOnly) {
           return;
         }
@@ -181,16 +182,26 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalPossibleChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.total, 0);
     totalCompletedChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.completed, 0);
 
-    const overallPercentage = totalPossibleChecks > 0 
-      ? Math.round((totalCompletedChecks / totalPossibleChecks) * 100) 
-      : 0;
+    const habitScore = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
+
+    // Blend protocol targets into final score (70% habits, 30% weekly protocol if present)
+    let protocolScore = -1;
+    if (weeklyProtocolGoals.length > 0) {
+      const protocolCompleted = weeklyProtocolGoals.filter((g: any) => g.completed || g.status === "completed").length;
+      protocolScore = (protocolCompleted / weeklyProtocolGoals.length) * 100;
+    }
+
+    let overallPercentage = Math.round(habitScore);
+    if (protocolScore >= 0) {
+      overallPercentage = Math.round(habitScore * 0.7 + protocolScore * 0.3);
+    }
 
     setSummaryData((prev) => ({
       isSunday,
       isPhotoWeek,
       totalPossible: totalPossibleChecks,
       totalCompleted: totalCompletedChecks,
-      overallPercentage,
+      overallPercentage: Math.min(100, Math.max(0, overallPercentage)),
       habitBreakdown: finalizedBreakdown,
       weeklyProtocolGoals,
       weightHistory,
@@ -220,7 +231,21 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       return g;
     });
 
-    setSummaryData({ ...summaryData, weeklyProtocolGoals: updatedGoals });
+    // Re-calculate overall percentage immediately upon toggle
+    const habitScore = summaryData.totalPossible > 0 ? (summaryData.totalCompleted / summaryData.totalPossible) * 100 : 0;
+    const protocolCompleted = updatedGoals.filter((g: any) => g.completed || g.status === "completed").length;
+    const protocolScore = updatedGoals.length > 0 ? (protocolCompleted / updatedGoals.length) * 100 : -1;
+
+    let overallPercentage = Math.round(habitScore);
+    if (protocolScore >= 0) {
+      overallPercentage = Math.round(habitScore * 0.7 + protocolScore * 0.3);
+    }
+
+    setSummaryData({ 
+      ...summaryData, 
+      weeklyProtocolGoals: updatedGoals,
+      overallPercentage: Math.min(100, Math.max(0, overallPercentage))
+    });
 
     const activeDate = todayKey();
     const mondayKey = getMondayKeyForDate(activeDate);
@@ -386,7 +411,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
               <div className="rounded-lg border border-border bg-surface-2/60 p-4 text-center space-y-1">
                 <p className="stat-label">You were on form for</p>
                 <p className="font-display text-3xl font-bold text-primary">{summaryData.overallPercentage}%</p>
-                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total checks)</p>
+                <p className="text-xs text-muted-foreground">of the week ({summaryData.totalCompleted}/{summaryData.totalPossible} total daily checks)</p>
               </div>
 
               <div className="space-y-2">
@@ -405,7 +430,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
-                  
+                    <span className="text-[10px] text-muted-foreground italic">Confirm status before generating AI audit</span>
                   </div>
                   <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
                     {summaryData.weeklyProtocolGoals.map((g) => {

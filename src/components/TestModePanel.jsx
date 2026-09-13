@@ -5,16 +5,27 @@ export function TestModePanel() {
   const [activeDate, setActiveDate] = useState(getCurrentDateString());
   const isMockActive = !!localStorage.getItem('p35_test_date');
 
-  const shiftDays = (days) => {
+  const clearFinalisedWeeks = () => {
+    // Clean up any lingering finalisation flags when shifting time or resetting
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('p35_finalised_week_')) {
+        localStorage.removeItem(k);
+      }
+    });
+  };
+
+  const shiftDays = (days: number) => {
     const current = new Date(activeDate);
     current.setDate(current.getDate() + days);
     const newStr = current.toISOString().split('T')[0];
     localStorage.setItem('p35_test_date', newStr);
+    clearFinalisedWeeks();
     window.location.reload();
   };
 
   const resetToLive = () => {
     localStorage.removeItem('p35_test_date');
+    clearFinalisedWeeks();
     window.location.reload();
   };
 
@@ -31,7 +42,7 @@ export function TestModePanel() {
         <button onClick={() => shiftDays(7)} style={buttonStyle}>+1 Week</button>
         <button onClick={() => shiftDays(30)} style={buttonStyle}>+30 Days</button>
         {isMockActive && (
-          <button onClick={resetToLive} style={{ ...buttonStyle, background: '#ef4444', border: 'none' }}>
+          <button onClick={resetToLive} style={{ ...buttonStyle, background: '#ef4444', border: 'none', color: '#fff' }}>
             Reset Live
           </button>
         )}
@@ -46,6 +57,6 @@ const buttonStyle = {
   border: '1px solid #00ff66',
   padding: '6px 12px',
   borderRadius: '6px',
-  fontWeight: 'bold',
+  fontWeight: 'bold' as const,
   cursor: 'pointer'
 };

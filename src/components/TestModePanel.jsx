@@ -6,7 +6,6 @@ export function TestModePanel() {
   const isMockActive = !!localStorage.getItem('p35_test_date');
 
   const clearFinalisedWeeks = () => {
-    // Clean up any lingering finalisation flags when shifting time or resetting
     Object.keys(localStorage).forEach(k => {
       if (k.startsWith('p35_finalised_week_')) {
         localStorage.removeItem(k);
@@ -14,7 +13,7 @@ export function TestModePanel() {
     });
   };
 
-  const shiftDays = (days: number) => {
+  const shiftDays = (days) => {
     const current = new Date(activeDate);
     current.setDate(current.getDate() + days);
     const newStr = current.toISOString().split('T')[0];
@@ -57,6 +56,6 @@ const buttonStyle = {
   border: '1px solid #00ff66',
   padding: '6px 12px',
   borderRadius: '6px',
-  fontWeight: 'bold' as const,
+  fontWeight: 'bold',
   cursor: 'pointer'
 };

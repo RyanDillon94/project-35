@@ -458,4 +458,62 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                               </Button>
                               <Button
                                 size="sm"
-                                variant={currentStatus === "failed" ? "destructive" : "outlin
+                                variant={currentStatus === "failed" ? "destructive" : "outline"}
+                                className="h-6 px-2 text-[10px] gap-1"
+                                onClick={() => handleUpdateGoalStatus(g.id, "failed")}
+                              >
+                                <XCircle className="size-3" /> Confirm Failed
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-lg border border-primary/30 bg-surface-2/60 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <Sparkles className="size-4" />
+                    <span>AI Coach Weekly Synthesis</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
+                    onClick={() => void generateAiSummary()}
+                    disabled={loadingAi}
+                  >
+                    {loadingAi ? <Loader2 className="size-3 animate-spin" /> : "Generate / Refresh"}
+                  </Button>
+                </div>
+                {loadingAi ? (
+                  <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
+                    <Loader2 className="size-4 animate-spin text-primary" />
+                    <span>Synthesizing journal notes and weight trend...</span>
+                  </div>
+                ) : hasGenerated ? (
+                  <FormattedSynthesis text={summaryData.aiSummary} />
+                ) : (
+                  <p className="text-xs text-muted-foreground italic py-2">
+                    {summaryData.aiSummary}
+                  </p>
+                )}
+              </div>
+
+              <Button 
+                className="w-full" 
+                disabled={!summaryData.hasWeighedInToday} 
+                onClick={() => void handleLockInWeek()}
+              >
+                {summaryData.hasWeighedInToday ? "Lock In & Close Summary" : "Weekly Weight Needed First"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}

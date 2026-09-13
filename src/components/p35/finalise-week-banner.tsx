@@ -433,7 +433,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
-                    <span className="text-[10px] text-muted-foreground italic">Confirm status before generating AI audit</span>
                   </div>
                   <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
                     {summaryData.weeklyProtocolGoals.map((g) => {

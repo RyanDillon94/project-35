@@ -49,17 +49,18 @@ function Dashboard({ userId }: { userId: string }) {
   const { hevyApiKey, workout, update } = useUserSettings(userId);
   const [isFinalised, setIsFinalised] = useState(false);
 
-  // Check if the current week's audit has been locked in
+  // Check if the current simulated date's audit has been locked in strictly by date key
   useEffect(() => {
-    const today = todayKey();
-    const weekKey = `p35_finalised_week_${today}`;
-    const lastLocked = localStorage.getItem("p35_last_locked_week");
-    
-    setIsFinalised(localStorage.getItem(weekKey) !== null || lastLocked === today);
+    const checkFinalisedStatus = () => {
+      const today = todayKey();
+      const weekKey = `p35_finalised_week_${today}`;
+      setIsFinalised(localStorage.getItem(weekKey) !== null);
+    };
 
-    // Optional event listener if you want it to update instantly without refreshing when locked in
+    checkFinalisedStatus();
+
     const handleStorageChange = () => {
-      setIsFinalised(localStorage.getItem(weekKey) !== null || localStorage.getItem("p35_last_locked_week") === today);
+      checkFinalisedStatus();
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
@@ -68,10 +69,10 @@ function Dashboard({ userId }: { userId: string }) {
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
 
-     Hide test panel 
-      <TestModePanel /> 
+     {/* Hide test panel 
+      <TestModePanel /> */}
       
-      {/* Renders at the top ONLY if NOT finalized yet */}
+      {/* Renders at the top ONLY if NOT finalized yet for this specific Sunday */}
       {!isFinalised && <FinaliseWeekBanner userId={userId} />}
 
       <DashboardHeader />
@@ -96,7 +97,6 @@ function Dashboard({ userId }: { userId: string }) {
         </p><br></br>
       </div>
 
-
       {/* Footer Management Section */}
       <div className="flex flex-col items-center gap-2 pt-4 border-t border-border/40">
         <WeeklyTrendsAnalytics/>
@@ -104,7 +104,7 @@ function Dashboard({ userId }: { userId: string }) {
         <DataBackupCard />
       </div>
 
-      {/* Renders at the very bottom AFTER it has been finalized */}
+      {/* Renders at the very bottom AFTER it has been finalized for this specific Sunday */}
       {isFinalised && <FinaliseWeekBanner userId={userId} />}
 
       <CoachDrawer workout={workout} entries={entries} userId={userId} />

@@ -66,7 +66,7 @@ export function WeeklyTrendsAnalytics() {
 
     for (let w = 3; w >= 0; w--) {
       const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() - w * 7);
+      targetDate.setDate(targetDate.getDate() - w * 7);
       
       const dayOfWeek = targetDate.getDay();
       const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
@@ -76,6 +76,7 @@ export function WeeklyTrendsAnalytics() {
       let totalPossible = 0;
       let totalCompleted = 0;
 
+      // 1. Calculate Daily Habit checks for the week
       for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
@@ -110,9 +111,31 @@ export function WeeklyTrendsAnalytics() {
         });
       }
 
-      const score = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+      const habitScore = totalPossible > 0 ? (totalCompleted / totalPossible) * 100 : 0;
+
+      // 2. Calculate Weekly Execution Protocol targets for this Monday's key
+      const mondayKey = monday.toISOString().slice(0, 10);
+      let protocolScore = -1;
+      try {
+        const rawProtocol = localStorage.getItem(`p35_weekly_protocol_${mondayKey}`);
+        if (rawProtocol) {
+          const protocolGoals = JSON.parse(rawProtocol);
+          if (Array.isArray(protocolGoals) && protocolGoals.length > 0) {
+            const completedCount = protocolGoals.filter((g: any) => g.completed || g.status === "completed").length;
+            protocolScore = Math.round((completedCount / protocolGoals.length) * 100);
+          }
+        }
+      } catch {}
+
+      // 3. Combine habit adherence and protocol score if protocol targets exist for the week
+      let finalScore = Math.round(habitScore);
+      if (protocolScore >= 0) {
+        // Blended weight: 70% daily habits, 30% weekly execution protocol targets (or average them)
+        finalScore = Math.round(habitScore * 0.7 + protocolScore * 0.3);
+      }
+
       const weekLabel = `Week of ${monday.toLocaleDateString("en-GB", { month: "short", day: "numeric" })}`;
-      weeks.push({ weekLabel, score });
+      weeks.push({ weekLabel, score: Math.min(100, Math.max(0, finalScore)) });
     }
 
     return weeks;
@@ -214,7 +237,7 @@ export function WeeklyTrendsAnalytics() {
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-              Adherence is calculated dynamically based on weekday versus weekend rule profiles across each active training block.
+              Adherence is calculated dynamically based on weekday rules and weekly execution protocol targets.
             </p>
 
             {/* 4-Week Training Progress Section */}

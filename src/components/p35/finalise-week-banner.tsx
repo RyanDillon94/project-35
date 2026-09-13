@@ -19,7 +19,7 @@ function getCoachSystemPrompt() {
   return `You are the Project 35 performance coach: direct, no-fluff, and technically sharp.
 Rules:
 - Celebrate only earned wins, briefly. No hype, no filler, no emoji.
-- Athlete Phase Context: Phase ${activePhase.id} (${activePhase.title}) — ${activeBlock.name}. Focus: ${activePhase.focus.join(", ")}. Phase Summary: ${activePhase.summary}
+- Athlete Phase Context: Phase ${activePhase.id} (${activePhase.title}) — ${activeBlock.name}. Focus: ${activeBlock.focus.join(", ")}. Phase Summary: ${activePhase.summary}
 - Live Targets: ${DAILY_TARGETS.caloriesMin.toLocaleString()}–${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps.toLocaleString()} steps daily, routine standard: "${DAILY_TARGETS.routine}", target benchmark: ${GOAL_WEIGHT} lbs, arriving at 35 in November 2029 in undeniable shape.
 - Kilograms in, kilograms out for lifts; pounds for bodyweight.
 - Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
@@ -115,11 +115,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     
     const isPhotoWeek = isSunday && currentWeekNumber % 4 === 0;
 
-    const habitStats: Record<string, { label: string; completed: number; total: number; isWeekdayOnly?: boolean }> = {};
+    const habitStats: Record<string, { label: string; completed: number; total: number; expectedTotal: number }> = {};
     let totalPossibleChecks = 0;
     let totalCompletedChecks = 0;
     const journals: string[] = [];
 
+    // Loop through the past 7 days (Monday through Sunday)
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
@@ -144,16 +145,24 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           labelLower.includes("6:00 am") || 
           labelLower.includes("early morning");
 
+        // If it's a weekend, skip weekday-only habits entirely
         if (isWeekend && isWeekdayOnly) {
           return;
         }
 
+        // If it's a weekday, skip weekend-only habits entirely
+        if (!isWeekend && (h.key === "dog_walk" || h.key === "morning_routine" || labelLower.includes("dog walk") || labelLower.includes("weekend"))) {
+          return;
+        }
+
         if (!habitStats[h.key]) {
+          // Weekday habits happen 5 times a week, weekend habits happen 2 times a week, others 7 times
+          const expectedTotal = isWeekdayOnly ? 5 : (isWeekend ? 2 : 7);
           habitStats[h.key] = { 
             label: h.label, 
             completed: 0, 
-            total: 0, 
-            isWeekdayOnly 
+            total: expectedTotal,
+            expectedTotal
           };
         }
 
@@ -169,12 +178,11 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
 
     const finalizedBreakdown = Object.values(habitStats).map((stat) => {
-      const total = stat.isWeekdayOnly ? 5 : 7;
-      const completed = Math.min(stat.completed, total);
+      const completed = Math.min(stat.completed, stat.expectedTotal);
       return {
         label: stat.label,
         completed,
-        total,
+        total: stat.expectedTotal,
       };
     });
 
@@ -183,6 +191,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     const habitScore = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
 
+    // Blend protocol targets into final score (70% habits, 30% weekly protocol if present)
     let protocolScore = -1;
     if (weeklyProtocolGoals.length > 0) {
       const protocolCompleted = weeklyProtocolGoals.filter((g: any) => g.completed || g.status === "completed").length;

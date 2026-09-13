@@ -145,18 +145,13 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           labelLower.includes("6:00 am") || 
           labelLower.includes("early morning");
 
-        // If it's a weekend, skip weekday-only habits entirely
-        if (isWeekend && isWeekdayOnly) {
-          return;
-        }
+        // HARD BLOCK: If it's a weekend, do NOT count weekday-only habits AT ALL
+        if (isWeekend && isWeekdayOnly) return;
 
-        // If it's a weekday, skip weekend-only habits entirely
-        if (!isWeekend && (h.key === "dog_walk" || h.key === "morning_routine" || labelLower.includes("dog walk") || labelLower.includes("weekend"))) {
-          return;
-        }
+        // HARD BLOCK: If it's a weekday, do NOT count weekend-only habits AT ALL
+        if (!isWeekend && (h.key === "dog_walk" || h.key === "morning_routine" || labelLower.includes("dog walk") || labelLower.includes("weekend"))) return;
 
         if (!habitStats[h.key]) {
-          // Weekday habits happen 5 times a week, weekend habits happen 2 times a week, others 7 times
           const expectedTotal = isWeekdayOnly ? 5 : (isWeekend ? 2 : 7);
           habitStats[h.key] = { 
             label: h.label, 

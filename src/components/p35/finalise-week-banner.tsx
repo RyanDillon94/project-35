@@ -138,6 +138,11 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
 
       dayHabits.forEach((h) => {
+        // Exclude weekend-specific habits from the weekly summary breakdown entirely
+        if (h.key.startsWith("weekend_")) {
+          return;
+        }
+
         const labelLower = h.label.toLowerCase();
         const isWeekdayOnly = 
           h.key === "early_morning" || 
@@ -148,11 +153,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         // HARD BLOCK: If it's a weekend, do NOT count weekday-only habits AT ALL
         if (isWeekend && isWeekdayOnly) return;
 
-        // HARD BLOCK: If it's a weekday, do NOT count weekend-only habits AT ALL
-        if (!isWeekend && (h.key === "dog_walk" || h.key === "morning_routine" || labelLower.includes("dog walk") || labelLower.includes("weekend"))) return;
-
         if (!habitStats[h.key]) {
-          const expectedTotal = isWeekdayOnly ? 5 : (isWeekend ? 2 : 7);
+          const expectedTotal = isWeekdayOnly ? 5 : 7;
           habitStats[h.key] = { 
             label: h.label, 
             completed: 0, 

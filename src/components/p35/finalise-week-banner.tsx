@@ -66,6 +66,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     overallPercentage: number;
     habitBreakdown: { label: string; completed: number; total: number }[];
     weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending" }[];
+    weightHistory: { date: string; weight: number }[];
     journals: string[];
     aiSummary: string;
     hasWeighedInToday: boolean;
@@ -77,6 +78,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const isSunday = today.getUTCDay() === 0;
 
     let hasWeighedInToday = false;
+    let weightHistory: { date: string; weight: number }[] = [];
+
     try {
       const rawWeights = userId 
         ? localStorage.getItem(`p35_weigh_ins_${userId}`) || localStorage.getItem("p35_weigh_ins")
@@ -86,6 +89,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         const parsedEntries = JSON.parse(rawWeights);
         if (Array.isArray(parsedEntries)) {
           hasWeighedInToday = parsedEntries.some((e: any) => e.date === todayStr);
+          weightHistory = parsedEntries
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5); // Grab recent 5 entries for context
         }
       }
     } catch (err) {
@@ -187,6 +193,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       overallPercentage,
       habitBreakdown: finalizedBreakdown,
       weeklyProtocolGoals,
+      weightHistory,
       journals,
       aiSummary: prev?.aiSummary && hasGenerated 
         ? prev.aiSummary 
@@ -244,9 +251,13 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
             .join("\n")
         : "No weekly execution focus targets logged.";
 
-      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
+      const weightText = summaryData.weightHistory.length > 0
+        ? summaryData.weightHistory.map((w) => `- ${w.date}: ${w.weight} lbs`).join("\n")
+        : "No weigh-ins logged recently.";
+
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nRecent Bodyweight Log:\n${weightText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = "Review my completed week based on my performance data, weekly execution protocol targets, and journal notes. Seamlessly weave my weekly execution protocol targets (and their confirmed Smashed/Failed/Pending status) into your standard narrative and verdict sections rather than creating a separate rigid checklist block. Maintain a sharp, direct, conversational coaching tone blending physical adherence and lifestyle execution. If compliance or protocol targets are incomplete, tell me to sort my shit out.";
+      const userPrompt = "Review my completed week based on my performance data, recent bodyweight trend, weekly execution protocol targets, and journal notes. Seamlessly weave my weight progress and execution protocol targets (along with their Smashed/Failed/Pending status) into your standard narrative and verdict sections. Maintain a sharp, direct, conversational coaching tone blending physical adherence and lifestyle execution. If compliance or weight trend is off-track, tell me to sort my shit out.";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
@@ -394,7 +405,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
-                    <span className="text-[10px] text-muted-foreground italic">Confirm status before generating AI audit</span>
+                  
                   </div>
                   <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
                     {summaryData.weeklyProtocolGoals.map((g) => {
@@ -459,7 +470,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 {loadingAi ? (
                   <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
                     <Loader2 className="size-4 animate-spin text-primary" />
-                    <span>Synthesizing journal notes and protocol standards...</span>
+                    <span>Synthesizing journal notes and weight trend...</span>
                   </div>
                 ) : hasGenerated ? (
                   <FormattedSynthesis text={summaryData.aiSummary} />

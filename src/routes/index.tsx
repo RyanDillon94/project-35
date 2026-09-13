@@ -48,8 +48,9 @@ function Dashboard({ userId }: { userId: string }) {
   const { entries, save } = useWeighIns(userId);
   const { hevyApiKey, workout, update } = useUserSettings(userId);
   const [isFinalised, setIsFinalised] = useState(false);
+  const currentTestDate = todayKey(); // Tracks simulated date changes from the test panel
 
-  // Check if the current simulated date's audit has been locked in strictly by date key
+  // Re-check finalisation status whenever the simulated date changes
   useEffect(() => {
     const checkFinalisedStatus = () => {
       const today = todayKey();
@@ -59,21 +60,19 @@ function Dashboard({ userId }: { userId: string }) {
 
     checkFinalisedStatus();
 
-    const handleStorageChange = () => {
-      checkFinalisedStatus();
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+    // Listen for both window storage events and periodic polling for test mode changes
+    const interval = setInterval(checkFinalisedStatus, 500);
+    return () => clearInterval(interval);
+  }, [currentTestDate]);
 
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
 
-     Hide test panel 
+    Hide test panel 
       <TestModePanel /> 
       
-      {/* Renders at the top ONLY if NOT finalized yet for this specific Sunday */}
-      {!isFinalised && <FinaliseWeekBanner userId={userId} />}
+      {/* Renders at the top ONLY if NOT finalized for this simulated Sunday */}
+      {!isFinalised && <FinaliseWeekBanner userId={userId} key={`top-${currentTestDate}`} />}
 
       <DashboardHeader />
       <NonNegotiables userId={userId} />
@@ -104,8 +103,8 @@ function Dashboard({ userId }: { userId: string }) {
         <DataBackupCard />
       </div>
 
-      {/* Renders at the very bottom AFTER it has been finalized for this specific Sunday */}
-      {isFinalised && <FinaliseWeekBanner userId={userId} />}
+      {/* Renders at the very bottom AFTER it has been finalized for this simulated Sunday */}
+      {isFinalised && <FinaliseWeekBanner userId={userId} key={`bot-${currentTestDate}`} />}
 
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
     </main>

@@ -9,7 +9,7 @@ import {
   GOAL_WEIGHT 
 } from "@/lib/project35";
 import { triggerFridayBackup } from "@/lib/p35-cloud";
-import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, CheckCircle, XCircle } from "lucide-react";
+import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, CheckCircle, XCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { getMondayKeyForDate } from "./WeeklyProtocolCard";
 
@@ -70,12 +70,17 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     journals: string[];
     aiSummary: string;
     hasWeighedInToday: boolean;
+    isFinalised: boolean;
   } | null>(null);
 
   const calculateWeekData = useCallback(() => {
     const todayStr = todayKey();
     const today = new Date(todayStr + "T00:00:00Z");
     const isSunday = today.getUTCDay() === 0;
+
+    const weekKey = `p35_finalised_week_${todayStr}`;
+    const lastLocked = localStorage.getItem("p35_last_locked_week");
+    const isFinalised = localStorage.getItem(weekKey) !== null || lastLocked === todayStr;
 
     let hasWeighedInToday = false;
     let weightHistory: { date: string; weight: number }[] = [];
@@ -120,7 +125,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     let totalCompletedChecks = 0;
     const journals: string[] = [];
 
-    // Loop through the past 7 days (Monday through Sunday)
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
@@ -138,7 +142,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
 
       dayHabits.forEach((h) => {
-        // Exclude weekend-specific habits from the weekly summary breakdown entirely
         if (h.key.startsWith("weekend_")) {
           return;
         }
@@ -150,7 +153,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           labelLower.includes("6:00 am") || 
           labelLower.includes("early morning");
 
-        // HARD BLOCK: If it's a weekend, do NOT count weekday-only habits AT ALL
         if (isWeekend && isWeekdayOnly) return;
 
         if (!habitStats[h.key]) {
@@ -188,7 +190,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     const habitScore = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
 
-    // Blend protocol targets into final score (70% habits, 30% weekly protocol if present)
     let protocolScore = -1;
     if (weeklyProtocolGoals.length > 0) {
       const protocolCompleted = weeklyProtocolGoals.filter((g: any) => g.completed || g.status === "completed").length;
@@ -214,6 +215,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         ? prev.aiSummary 
         : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
       hasWeighedInToday,
+      isFinalised,
     }));
   }, [hasGenerated, userId]);
 
@@ -351,6 +353,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
     
     setIsOpen(false);
+    calculateWeekData();
 
     if (overallPct < 50) {
       toast.error(`Week locked in at ${overallPct}%. Absolute shambles. Sort your shit out.`);
@@ -368,15 +371,19 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   }
 
   return (
-    <div className="panel border-primary/40 bg-primary/10 p-4 space-y-3">
+    <div className={`panel p-4 space-y-3 ${summaryData.isFinalised ? "border-emerald-500/40 bg-emerald-500/10" : "border-primary/40 bg-primary/10"}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/20 text-primary">
-            <CalendarCheck className="size-5" />
+          <div className={`grid size-9 shrink-0 place-items-center rounded-lg ${summaryData.isFinalised ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary"}`}>
+            {summaryData.isFinalised ? <Check className="size-5" /> : <CalendarCheck className="size-5" />}
           </div>
           <div>
-            <h3 className="text-sm font-bold text-foreground">Sunday: Finalise Week</h3>
-            <p className="text-xs text-muted-foreground">Review metrics, protocol targets, synthesize journals, and lock in.</p>
+            <h3 className="text-sm font-bold text-foreground">
+              {summaryData.isFinalised ? "Sunday: Week Finalised & Locked" : "Sunday: Finalise Week"}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {summaryData.isFinalised ? "Weekly audit complete and backed up. Refinalise anytime if adjustments are needed." : "Review metrics, protocol targets, synthesize journals, and lock in."}
+            </p>
           </div>
         </div>
 
@@ -387,9 +394,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
           }
         }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-1.5 shrink-0">
+            <Button size="sm" variant={summaryData.isFinalised ? "outline" : "default"} className="gap-1.5 shrink-0">
               <Sparkles className="size-4" />
-              Finalise
+              {summaryData.isFinalised ? "Refinalise" : "Finalise"}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -433,6 +440,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
+                    <span className="text-[10px] text-muted-foreground italic">Confirm status before generating AI audit</span>
                   </div>
                   <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
                     {summaryData.weeklyProtocolGoals.map((g) => {
@@ -456,7 +464,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                               <Button
                                 size="sm"
                                 variant={currentStatus === "completed" ? "default" : "outline"}
-                                className="h-6 px-2 text-[10px] gap-1"
+                              className="h-6 px-2 text-[10px] gap-1"
                                 onClick={() => handleUpdateGoalStatus(g.id, "completed")}
                               >
                                 <CheckCircle className="size-3" /> Confirm Smashed

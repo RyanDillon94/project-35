@@ -353,6 +353,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     setIsOpen(false);
     calculateWeekData();
 
+    // Force dispatch a custom event so the index page updates instantly
+    window.dispatchEvent(new Event("p35-week-finalised"));
+
     if (overallPct < 50) {
       toast.error(`Week locked in at ${overallPct}%. Absolute shambles. Sort your shit out.`);
     } else if (overallPct < 80) {

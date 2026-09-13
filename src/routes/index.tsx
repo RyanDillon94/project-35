@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { DashboardHeader } from "@/components/p35/header";
 import { NonNegotiables } from "@/components/p35/non-negotiables";
 import { WeeklyProtocolCard } from "@/components/p35/WeeklyProtocolCard";
@@ -14,6 +15,7 @@ import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { TestModePanel } from '../components/TestModePanel';
 import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
 import { StrengthCard } from "@/components/p35/StrengthCard";
+import { todayKey } from "@/lib/project35";
 
 
 export const Route = createFileRoute("/")({
@@ -45,6 +47,23 @@ function Index() {
 function Dashboard({ userId }: { userId: string }) {
   const { entries, save } = useWeighIns(userId);
   const { hevyApiKey, workout, update } = useUserSettings(userId);
+  const [isFinalised, setIsFinalised] = useState(false);
+
+  // Check if the current week's audit has been locked in
+  useEffect(() => {
+    const today = todayKey();
+    const weekKey = `p35_finalised_week_${today}`;
+    const lastLocked = localStorage.getItem("p35_last_locked_week");
+    
+    setIsFinalised(localStorage.getItem(weekKey) !== null || lastLocked === today);
+
+    // Optional event listener if you want it to update instantly without refreshing when locked in
+    const handleStorageChange = () => {
+      setIsFinalised(localStorage.getItem(weekKey) !== null || localStorage.getItem("p35_last_locked_week") === today);
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
@@ -52,8 +71,8 @@ function Dashboard({ userId }: { userId: string }) {
      {/* Hide test panel 
       <TestModePanel /> */}
       
-      
-      <FinaliseWeekBanner userId={userId} />
+      {/* Renders at the top ONLY if NOT finalized yet */}
+      {!isFinalised && <FinaliseWeekBanner userId={userId} />}
 
       <DashboardHeader />
       <NonNegotiables userId={userId} />
@@ -71,7 +90,7 @@ function Dashboard({ userId }: { userId: string }) {
       />
       <PhotoCheckpoint userId={userId} />
       <Roadmap />
-            <div className="flex flex-col items-center gap-2 pt-2">
+      <div className="flex flex-col items-center gap-2 pt-2">
         <p className="text-center text-sm italic tracking-wide text-primary/90 font-medium">
           &ldquo;Only cunts drink on weekdays... Don&apos;t be a cunt.&rdquo;
         </p><br></br>
@@ -80,10 +99,13 @@ function Dashboard({ userId }: { userId: string }) {
 
       {/* Footer Management Section */}
       <div className="flex flex-col items-center gap-2 pt-4 border-t border-border/40">
-<WeeklyTrendsAnalytics/>
-<DeloadCard />
+        <WeeklyTrendsAnalytics/>
+        <DeloadCard />
         <DataBackupCard />
       </div>
+
+      {/* Renders at the very bottom AFTER it has been finalized */}
+      {isFinalised && <FinaliseWeekBanner userId={userId} />}
 
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
     </main>

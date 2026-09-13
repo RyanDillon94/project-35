@@ -79,8 +79,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const isSunday = today.getUTCDay() === 0;
 
     const weekKey = `p35_finalised_week_${todayStr}`;
-    const lastLocked = localStorage.getItem("p35_last_locked_week");
-    const isFinalised = localStorage.getItem(weekKey) !== null || lastLocked === todayStr;
+    const isFinalised = localStorage.getItem(weekKey) !== null;
 
     let hasWeighedInToday = false;
     let weightHistory: { date: string; weight: number }[] = [];
@@ -330,11 +329,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       return;
     }
 
-    const weekKey = `p35_finalised_week_${todayKey()}`;
+    const todayStr = todayKey();
+    const weekKey = `p35_finalised_week_${todayStr}`;
     const overallPct = summaryData.overallPercentage ?? 0;
     
     const weekArchiveRecord = {
-      date: todayKey(),
+      date: todayStr,
       overallPercentage: overallPct,
       totalCompleted: summaryData.totalCompleted ?? 0,
       totalPossible: summaryData.totalPossible ?? 0,
@@ -345,9 +345,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     try {
       localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
-      localStorage.setItem("p35_last_locked_week", todayKey());
-      
-      await triggerFridayBackup(todayKey());
+      await triggerFridayBackup(todayStr);
     } catch (err) {
       console.error("Failed to save weekly archive or trigger backup", err);
     }
@@ -464,7 +462,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                               <Button
                                 size="sm"
                                 variant={currentStatus === "completed" ? "default" : "outline"}
-                              className="h-6 px-2 text-[10px] gap-1"
+                                className="h-6 px-2 text-[10px] gap-1"
                                 onClick={() => handleUpdateGoalStatus(g.id, "completed")}
                               >
                                 <CheckCircle className="size-3" /> Confirm Smashed

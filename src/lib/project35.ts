@@ -289,11 +289,11 @@ export function getActiveHabits(now = getCurrentDate()): HabitDefinition[] {
   const { activeBlock } = getActiveBlockDetails(now);
 
   const workoutHabit: HabitDefinition = isWeekend
-    ? { key: "workout_complete", label: "Weekend Dog Walk Completed", sublabel: "Weekend Routine" }
+    ? { key: "workout_complete", label: "Dog Walk Completed", sublabel: "Weekend Routine" }
     : { key: "workout_complete", label: "Workout Completed", sublabel: "Iron Logged" };
 
   const timeHabit: HabitDefinition = isWeekend
-    ? { key: "early_start", label: "Morning Routine On Time", sublabel: "Weekend Standard" }
+    ? { key: "early_start", label: "Morning Routine As Planned", sublabel: "Weekend Standard" }
     : { key: "early_start", label: "Hit at 6:00 AM", sublabel: "The Early Standard" };
 
   const proteinHabit: HabitDefinition = {

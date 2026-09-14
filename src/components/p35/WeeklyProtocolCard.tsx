@@ -124,7 +124,7 @@ export function WeeklyProtocolCard() {
         </div>
         <div className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${needsSetup ? "bg-amber-500/20 text-amber-300" : "text-primary bg-primary/10"}`}>
           <Calendar className="size-3" />
-          <span>{needsSetup ? "Setup Required" : `${goals.filter((g) => g.completed).length}/${goals.length} Done`}</span>
+          <span>{needsSetup ? "Weekly Goals Required" : `${goals.filter((g) => g.completed).length}/${goals.length} Done`}</span>
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export function WeeklyProtocolCard() {
           <div className="rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-4 text-center space-y-2">
             <p className="text-xs font-semibold text-amber-400">Monday Protocol Reset Active</p>
             <p className="text-xs text-muted-foreground">
-              Wipe the slate clean. Add up to 3 sharp, non-physical focus standards to dominate this week.
+              Add up to 3 sharp, non-physical focus standards to dominate this week.
             </p>
           </div>
         ) : (

@@ -28,8 +28,8 @@ export function isDateMonday(dateStr?: string) {
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
-  // Use the passed date, or fallback to the simulated/test date in storage, or today's live date
-  const activeDate = currentDate || localStorage.getItem("p35_test_date") || todayKey();
+  // Use the passed navigation date, fallback to active storage date, or live today
+  const activeDate = currentDate || localStorage.getItem("p35_active_date") || todayKey();
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
   const isMonday = isDateMonday(activeDate);
@@ -45,7 +45,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
 
   const [newGoalText, setNewGoalText] = useState("");
 
-  // Re-fetch goals whenever the active viewed date changes
+  // Re-fetch and sync goals whenever the active viewed date changes via navigator arrows
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);

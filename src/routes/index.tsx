@@ -50,7 +50,7 @@ function Dashboard({ userId }: { userId: string }) {
   const [isFinalised, setIsFinalised] = useState(false);
   
   // Track the currently viewed date from local storage/navigator
-  const [currentDate, setCurrentDate] = useState(() => todayKey());
+  const [currentDate, setCurrentDate] = useState(() => localStorage.getItem("p35_active_date") || todayKey());
 
   useEffect(() => {
     const updateDateAndStatus = () => {

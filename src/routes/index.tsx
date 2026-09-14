@@ -48,29 +48,34 @@ function Dashboard({ userId }: { userId: string }) {
   const { entries, save } = useWeighIns(userId);
   const { hevyApiKey, workout, update } = useUserSettings(userId);
   const [isFinalised, setIsFinalised] = useState(false);
-  const currentTestDate = todayKey();
+  
+  // Track the currently viewed date from local storage/navigator
+  const [currentDate, setCurrentDate] = useState(() => todayKey());
 
   useEffect(() => {
-    const checkStatus = () => {
-      const today = todayKey();
-      const weekKey = `p35_finalised_week_${today}`;
+    const updateDateAndStatus = () => {
+      const active = localStorage.getItem("p35_active_date") || todayKey();
+      setCurrentDate(active);
+
+      const weekKey = `p35_finalised_week_${active}`;
       setIsFinalised(localStorage.getItem(weekKey) !== null);
     };
 
-    checkStatus();
+    updateDateAndStatus();
 
-    // Listen to our custom lock-in event + regular storage updates
-    window.addEventListener("p35-week-finalised", checkStatus);
-    window.addEventListener("storage", checkStatus);
+    window.addEventListener("p35-week-finalised", updateDateAndStatus);
+    window.addEventListener("storage", updateDateAndStatus);
+    window.addEventListener("p35-date-changed", updateDateAndStatus as EventListener);
     
-    const interval = setInterval(checkStatus, 500);
+    const interval = setInterval(updateDateAndStatus, 300);
 
     return () => {
-      window.removeEventListener("p35-week-finalised", checkStatus);
-      window.removeEventListener("storage", checkStatus);
+      window.removeEventListener("p35-week-finalised", updateDateAndStatus);
+      window.removeEventListener("storage", updateDateAndStatus);
+      window.removeEventListener("p35-date-changed", updateDateAndStatus as EventListener);
       clearInterval(interval);
     };
-  }, [currentTestDate]);
+  }, []);
 
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
@@ -79,11 +84,14 @@ function Dashboard({ userId }: { userId: string }) {
       <TestModePanel /> */}
       
       {/* Top Banner (Only if NOT finalised) */}
-      {!isFinalised && <FinaliseWeekBanner userId={userId} key={`top-${currentTestDate}`} />}
+      {!isFinalised && <FinaliseWeekBanner userId={userId} key={`top-${currentDate}`} />}
 
       <DashboardHeader />
       <NonNegotiables userId={userId} />
-      <WeeklyProtocolCard />
+      
+      {/* Pass the active navigated date down to the protocol card */}
+      <WeeklyProtocolCard currentDate={currentDate} />
+
       <HevyCard
         workout={workout}
         apiKey={hevyApiKey}
@@ -111,7 +119,7 @@ function Dashboard({ userId }: { userId: string }) {
       </div>
 
       {/* Bottom Banner (Only AFTER finalised) */}
-      {isFinalised && <FinaliseWeekBanner userId={userId} key={`bot-${currentTestDate}`} />}
+      {isFinalised && <FinaliseWeekBanner userId={userId} key={`bot-${currentDate}`} />}
 
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
     </main>

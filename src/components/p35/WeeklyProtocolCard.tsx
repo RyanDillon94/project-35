@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { todayKey } from "@/lib/project35";
@@ -44,6 +43,15 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
   });
 
   const [newGoalText, setNewGoalText] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize the textarea as text expands
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+      inputRef.current.style.height = `${Math.max(38, inputRef.current.scrollHeight)}px`;
+    }
+  }, [newGoalText]);
 
   // Re-fetch and sync goals whenever the active viewed date changes via navigator arrows
   useEffect(() => {
@@ -76,6 +84,9 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
     ];
     setGoals(updated);
     setNewGoalText("");
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
     toast.success("Weekly protocol target locked in.");
   };
 
@@ -111,7 +122,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
           <div>
             <h2 className="text-sm font-bold text-foreground">Weekly Execution Protocol</h2>
             <p className="text-xs text-muted-foreground">
-              {needsSetup ? "Monday Reset: Lock in your 2-3 focus targets for this week" : `Non-physical focus targets for week of ${mondayKey}`}
+              {needsSetup ? "Monday Reset: Lock in your 2-3 focused targets for this week" : `Week specific targets for week of ${mondayKey}`}
             </p>
           </div>
         </div>
@@ -126,7 +137,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
           <div className="rounded-lg border border-dashed border-border bg-surface-2/20 p-4 text-center space-y-1">
             <p className="text-xs font-semibold text-muted-foreground">No Protocol Targets Logged</p>
             <p className="text-[11px] text-muted-foreground/80">
-              {isMonday ? "Wipe the slate clean. Add up to 3 sharp focus standards for this week." : "No targets were recorded for this historical week."}
+              {isMonday ? "Add up to 3 sharp focus standards for this week." : "No targets were recorded for this historical week."}
             </p>
           </div>
         ) : (
@@ -135,7 +146,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
             return (
               <div
                 key={goal.id}
-                className={`flex items-center justify-between gap-2 rounded-lg border p-2.5 transition-colors ${
+                className={`flex items-start justify-between gap-3 rounded-lg border p-3 transition-colors ${
                   currentStatus === "completed" 
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" 
                     : currentStatus === "failed"
@@ -144,16 +155,16 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                 }`}
               >
                 <div 
-                  className="flex items-center gap-2.5 flex-1 cursor-pointer min-w-0"
+                  className="flex items-start gap-2.5 flex-1 cursor-pointer"
                   onClick={() => toggleGoal(goal.id)}
                 >
-                  <CheckCircle2 className={`size-4 shrink-0 ${currentStatus === "completed" ? "text-emerald-500" : "text-muted-foreground"}`} />
-                  <span className="text-xs truncate font-medium">
+                  <CheckCircle2 className={`size-4 shrink-0 mt-0.5 ${currentStatus === "completed" ? "text-emerald-500" : "text-muted-foreground"}`} />
+                  <span className="text-xs font-medium whitespace-normal break-words leading-relaxed">
                     {goal.text}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 pt-0.5">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     currentStatus === "completed" 
                       ? "bg-emerald-500/25 text-emerald-300" 
@@ -179,20 +190,22 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
       </div>
 
       {goals.length < 3 && (
-        <div className="flex gap-2 pt-1">
-          <Input
+        <div className="flex gap-2 pt-1 items-end">
+          <textarea
+            ref={inputRef}
+            rows={1}
             placeholder="Add weekly target (e.g. Code 30 mins daily)..."
             value={newGoalText}
             onChange={(e) => setNewGoalText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 addGoal();
               }
             }}
-            className="h-9 text-xs"
+            className="w-full min-h-[38px] max-h-32 resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
           />
-          <Button size="sm" className="h-9 shrink-0 gap-1" onClick={addGoal}>
+          <Button size="sm" className="h-9 shrink-0 gap-1 self-stretch" onClick={addGoal}>
             <Plus className="size-4" /> Add Target
           </Button>
         </div>

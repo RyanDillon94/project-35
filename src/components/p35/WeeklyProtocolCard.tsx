@@ -27,8 +27,9 @@ export function isDateMonday(dateStr?: string) {
 
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
-export function WeeklyProtocolCard() {
-  const activeDate = todayKey();
+export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
+  // Use the passed date, or fallback to the simulated/test date in storage, or today's live date
+  const activeDate = currentDate || localStorage.getItem("p35_test_date") || todayKey();
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
   const isMonday = isDateMonday(activeDate);
@@ -44,7 +45,7 @@ export function WeeklyProtocolCard() {
 
   const [newGoalText, setNewGoalText] = useState("");
 
-  // Sync goals whenever the simulated activeDate changes (e.g., using test panel to jump weeks)
+  // Re-fetch goals whenever the active viewed date changes
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -98,8 +99,7 @@ export function WeeklyProtocolCard() {
     setGoals(updated);
   };
 
-  // Only prompt for setup if it is genuinely Monday AND no goals have been set yet
-  const needsSetup = isMonday && goals.length == 0;
+  const needsSetup = isMonday && goals.length === 0;
 
   return (
     <section className={`panel p-5 space-y-4 transition-colors ${needsSetup ? "border-amber-500/50 bg-amber-500/5 animate-pulse" : "border-primary/30 bg-surface-2/40"}`}>
@@ -156,10 +156,10 @@ export function WeeklyProtocolCard() {
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     currentStatus === "completed" 
-                      ? "bg-emerald-500/20 text-emerald-300" 
+                      ? "bg-emerald-500/25 text-emerald-300" 
                       : currentStatus === "failed"
-                      ? "bg-rose-500/20 text-rose-300"
-                      : "bg-amber-500/20 text-amber-300"
+                      ? "bg-rose-500/25 text-rose-300"
+                      : "bg-amber-500/25 text-amber-300"
                   }`}>
                     {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : "Pending"}
                   </span>

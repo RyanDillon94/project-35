@@ -13,9 +13,17 @@ function shiftIsoDate(isoDate: string, daysDelta: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function NonNegotiables({ userId }: { userId: string | null }) {
+export function NonNegotiables({ userId, onDateChange }: { userId: string | null; onDateChange?: (date: string) => void }) {
   const actualToday = todayKey();
-  const [selectedDay, setSelectedDay] = useState(actualToday);
+  
+  // Initialize from shared active storage or live today
+  const [selectedDay, setSelectedDay] = useState(() => {
+    try {
+      return localStorage.getItem("p35_active_date") || actualToday;
+    } catch {
+      return actualToday;
+    }
+  });
 
   const { habits, toggle } = useHabitDay(userId, selectedDay);
 
@@ -63,10 +71,19 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
   // Predictable date navigation
   const isToday = selectedDay >= actualToday;
 
+  const updateSelectedDay = (newDate: string) => {
+    setSelectedDay(newDate);
+    try {
+      localStorage.setItem("p35_active_date", newDate);
+      window.dispatchEvent(new Event("p35-date-changed"));
+      if (onDateChange) onDateChange(newDate);
+    } catch {}
+  };
+
   const stepDay = (delta: number) => {
     const nextDate = shiftIsoDate(selectedDay, delta);
     if (delta > 0 && nextDate > actualToday) return;
-    setSelectedDay(nextDate);
+    updateSelectedDay(nextDate);
   };
 
   const dateHeading = useMemo(() => {
@@ -83,11 +100,11 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
   const statsMetric = useMemo(() => {
     const [y, m, dNum] = selectedDay.split("-").map(Number);
     const selDate = new Date(Date.UTC(y, m - 1, dNum, 12, 0, 0));
-    
+
     // Find Monday of the selected day's week (UTC-safe)
     const dayOfWeek = selDate.getUTCDay(); // 0 is Sunday, 1 is Monday...
     const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    
+
     const mondayDate = new Date(selDate);
     mondayDate.setUTCDate(selDate.getUTCDate() - daysSinceMonday);
 
@@ -102,7 +119,7 @@ export function NonNegotiables({ userId }: { userId: string | null }) {
       const isWeekend = loopDayOfWeek === 0 || loopDayOfWeek === 6;
 
       const dayHabits = getActiveHabits(loopDate);
-      
+
       const raw = localStorage.getItem(`p35_habits_${k}`);
       let parsedHabits: Record<string, boolean> = {};
       if (raw) {

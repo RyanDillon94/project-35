@@ -36,9 +36,6 @@ export function WeeklyProtocolCard() {
   const [goals, setGoals] = useState<WeeklyProtocolGoal[]>(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (!saved && isMonday) {
-        return [];
-      }
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -47,20 +44,15 @@ export function WeeklyProtocolCard() {
 
   const [newGoalText, setNewGoalText] = useState("");
 
+  // Sync goals whenever the simulated activeDate changes (e.g., using test panel to jump weeks)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        setGoals(JSON.parse(saved));
-      } else if (isMonday) {
-        setGoals([]);
-      } else {
-        setGoals([]);
-      }
+      setGoals(saved ? JSON.parse(saved) : []);
     } catch {
       setGoals([]);
     }
-  }, [storageKey, isMonday]);
+  }, [storageKey]);
 
   useEffect(() => {
     try {
@@ -106,7 +98,8 @@ export function WeeklyProtocolCard() {
     setGoals(updated);
   };
 
-  const needsSetup = isMonday && goals.length === 0;
+  // Only prompt for setup if it is genuinely Monday AND no goals have been set yet
+  const needsSetup = isMonday && goals.length == 0;
 
   return (
     <section className={`panel p-5 space-y-4 transition-colors ${needsSetup ? "border-amber-500/50 bg-amber-500/5 animate-pulse" : "border-primary/30 bg-surface-2/40"}`}>
@@ -130,10 +123,10 @@ export function WeeklyProtocolCard() {
 
       <div className="space-y-2">
         {goals.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-4 text-center space-y-2">
-            <p className="text-xs font-semibold text-amber-400">Monday Protocol Reset Active</p>
-            <p className="text-xs text-muted-foreground">
-              Add up to 3 sharp, non-physical focus standards to dominate this week.
+          <div className="rounded-lg border border-dashed border-border bg-surface-2/20 p-4 text-center space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground">No Protocol Targets Logged</p>
+            <p className="text-[11px] text-muted-foreground/80">
+              {isMonday ? "Wipe the slate clean. Add up to 3 sharp focus standards for this week." : "No targets were recorded for this historical week."}
             </p>
           </div>
         ) : (
@@ -159,7 +152,7 @@ export function WeeklyProtocolCard() {
                     {goal.text}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                     currentStatus === "completed" 

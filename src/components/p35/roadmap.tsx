@@ -143,7 +143,7 @@ export function Roadmap() {
         ))}
       </Accordion>
 <br></br>
-      <div className="flex flex-col items-center pt-2">
+      <div className="flex flex-col items-center">
         <p className="text-center text-sm italic tracking-wide text-primary/90 font-medium">
           &ldquo;Only cunts drink on weekdays... Don&apos;t be a cunt.&rdquo;
         </p>

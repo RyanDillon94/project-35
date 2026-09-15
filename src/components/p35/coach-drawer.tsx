@@ -38,14 +38,17 @@ CONTEXT & TONE:
 
 WORKOUT ANALYSIS MODE:
 Trigger this specific structured format ONLY when the user explicitly asks to analyse, review, or evaluate a workout/session:
-- Evaluate the final set RPE of each exercise logged:
-  * RPE < 7.0: PROMOTE (+ load next session).
-  * RPE 7.0–8.0: PROGRESS REPS (+1 rep next session).
-  * RPE 8.5–9.0: STICK (Consolidate weight/form).
-  * RPE 9.5–10.0: HOLD OR DROP (-1 rep).
-  * Pain flag: SWAP OR DELOAD (-20% or neutral grip alternative).
-- Never assume an initial heavier set with fewer reps is an "adjustment" or warm-up. Treat decreasing weight across sets as intentional reverse pyramid or load drops.
-- For each exercise: list load x reps, RPE, assessment, next session call, and feedback on athlete notes.
+- For resistance exercises:
+  * Evaluate the final set RPE:
+    - RPE < 7.0: PROMOTE (+ load next session).
+    - RPE 7.0–8.0: PROGRESS REPS (+1 rep next session).
+    - RPE 8.5–9.0: STICK (Consolidate weight/form).
+    - RPE 9.5–10.0: HOLD OR DROP (-1 rep).
+    - Pain flag: SWAP OR DELOAD (-20% or neutral grip alternative).
+  * Never assume an initial heavier set with fewer reps is an "adjustment" or warm-up. Treat decreasing weight across sets as intentional reverse pyramid or load drops.
+- For cardio exercises (walking, treadmill, elliptical, etc.):
+  * Evaluate pace, duration, and distance against daily step and aerobic recovery goals.
+  * Next session call should focus on maintaining baseline, increasing duration, or managing joint impact.
 - For each exercise, use the exact label format:
 - **Logged:** [details]
 - **Assessment:** [details]
@@ -54,7 +57,57 @@ Trigger this specific structured format ONLY when the user explicitly asks to an
 
 - Conclude ONLY workout analyses with a 3-bullet "Next Session Battle Plan".`;
 
-// Matches HevyCard formatting and snaps imperial cable pin stacks
+function isCardioExercise(exerciseTitle: string, sets: any[]): boolean {
+  const title = exerciseTitle.toLowerCase();
+  const cardioKeywords = ["walk", "run", "treadmill", "elliptical", "cycle", "bike", "rowing", "stair"];
+  const matchesKeyword = cardioKeywords.some((k) => title.includes(k));
+  const hasCardioMetrics = sets.some(
+    (s) =>
+      s.distance_meters != null ||
+      s.distanceMeters != null ||
+      s.duration_seconds != null ||
+      s.durationSeconds != null ||
+      s.km != null ||
+      (s.weightKg == null && s.weight_kg == null && s.weightLbs == null && s.reps == null)
+  );
+  return matchesKeyword || hasCardioMetrics;
+}
+
+function formatCardio(s: any): string {
+  const meters =
+    s.distance_meters ??
+    s.distanceMeters ??
+    s.distance ??
+    (s.km != null ? s.km * 1000 : null);
+
+  const kmString = meters != null ? `${(meters / 1000).toFixed(2)} km` : null;
+
+  const totalSec =
+    s.duration_seconds ??
+    s.durationSeconds ??
+    s.duration ??
+    s.time;
+
+  let timeString: string | null = null;
+  if (typeof totalSec === "number") {
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    if (hrs > 0) {
+      timeString = `${hrs}h ${mins}min`;
+    } else if (mins > 0) {
+      timeString = `${mins}min`;
+    } else {
+      timeString = `${secs}s`;
+    }
+  } else if (typeof totalSec === "string") {
+    timeString = totalSec;
+  }
+
+  const parts = [timeString, kmString].filter(Boolean);
+  return parts.length > 0 ? parts.join(" • ") : "Completed";
+}
+
 function formatWeight(s: any, exerciseTitle: string) {
   const rawWeight = s.weightLbs ?? s.weight_lbs ?? s.weightKg ?? s.weight_kg;
   if (rawWeight == null) return "BW";
@@ -100,18 +153,17 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
     lines.push(
       `LATEST WORKOUT LOGGED IN HEVY: "${workout.title}" on ${workout.startTime ?? "recent"}.`,
       ...workout.exercises.map((ex) => {
+        const isCardio = isCardioExercise(ex.title, ex.sets);
         const lastSet = ex.sets[ex.sets.length - 1];
+
+        if (isCardio) {
+          const cardioSummary = ex.sets.map((s: any) => formatCardio(s)).join(", ");
+          const notesStr = ex.notes ? ` | Notes: "${ex.notes}"` : "";
+          return `- ${ex.title} (Cardio): ${cardioSummary}${notesStr}`;
+        }
+
         const setStr = ex.sets
           .map((s: any) => {
-            const kmVal = s.distance ?? s.km ?? s.distanceMeters;
-            const timeVal = s.time ?? s.durationSeconds ?? s.duration;
-
-            if (kmVal != null || timeVal != null || (s.weightKg == null && s.weight_kg == null && s.weightLbs == null && s.reps == null)) {
-              const timeString = timeVal != null ? `${timeVal}` : "51:05";
-              const kmString = kmVal != null ? `${kmVal} km` : "2.95 km";
-              return `${timeString} (${kmString})`;
-            }
-
             const weightDisplay = formatWeight(s, ex.title);
             return `${weightDisplay} x ${s.reps ?? "?"}${
               s.rpe != null ? ` @RPE${s.rpe}` : ""
@@ -142,7 +194,6 @@ async function callGemini(
   newPrompt: string,
   systemContext: string,
 ): Promise<{ text: string; model: string }> {
-  // Only forward the last 10 messages for deeper context without unnecessary token bloat
   const recentHistory = history.slice(-10);
 
   const contents = [

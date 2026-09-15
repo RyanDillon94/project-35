@@ -142,8 +142,11 @@ async function callGemini(
   newPrompt: string,
   systemContext: string,
 ): Promise<{ text: string; model: string }> {
+  // Only forward the last 10 messages for deeper context without unnecessary token bloat
+  const recentHistory = history.slice(-10);
+
   const contents = [
-    ...history.map((m) => ({
+    ...recentHistory.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     })),

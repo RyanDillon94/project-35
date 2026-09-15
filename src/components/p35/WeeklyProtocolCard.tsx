@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle } from "lucide-react";
+import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { todayKey } from "@/lib/project35";
 
@@ -9,6 +9,8 @@ export type WeeklyProtocolGoal = {
   text: string;
   completed: boolean;
   status?: "completed" | "failed" | "pending";
+  targetCount?: number; // 0 = single check, 1-7 = multiple tickboxes
+  completedCount?: number;
 };
 
 export function getMondayKeyForDate(dateStr?: string) {
@@ -27,7 +29,6 @@ export function isDateMonday(dateStr?: string) {
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
-  // Use the passed navigation date, fallback to active storage date, or live today
   const activeDate = currentDate || localStorage.getItem("p35_active_date") || todayKey();
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
@@ -43,9 +44,9 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
   });
 
   const [newGoalText, setNewGoalText] = useState("");
+  const [targetCount, setTargetCount] = useState<number>(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-resize the textarea as text expands
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
@@ -53,7 +54,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
     }
   }, [newGoalText]);
 
-  // Re-fetch and sync goals whenever the active viewed date changes via navigator arrows
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
@@ -66,8 +66,8 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(goals));
-    } catch {
-      console.error("Failed to save weekly protocol goals");
+    } catch (e) {
+      console.error("Failed to save weekly protocol goals", e);
     }
   }, [goals, storageKey]);
 
@@ -78,26 +78,59 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
       return;
     }
 
-    const updated = [
+    const updated: WeeklyProtocolGoal[] = [
       ...goals,
-      { id: Date.now().toString(), text: newGoalText.trim(), completed: false, status: "pending" },
+      {
+        id: Date.now().toString(),
+        text: newGoalText.trim(),
+        completed: false,
+        status: "pending",
+        targetCount,
+        completedCount: 0,
+      },
     ];
     setGoals(updated);
     setNewGoalText("");
+    setTargetCount(0);
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
     }
     toast.success("Weekly protocol target locked in.");
   };
 
+  // Whole card / text toggle (marks all done or clears)
   const toggleGoal = (id: string) => {
     const updated = goals.map((g) => {
       if (g.id === id) {
         const nextCompleted = !g.completed;
+        const total = g.targetCount ?? 0;
         return {
           ...g,
           completed: nextCompleted,
+          completedCount: nextCompleted ? (total > 0 ? total : 1) : 0,
           status: nextCompleted ? ("completed" as const) : ("pending" as const),
+        };
+      }
+      return g;
+    });
+    setGoals(updated);
+  };
+
+  // Sub-tickbox tap handler (index 0 to targetCount - 1)
+  const handleSubCheck = (id: string, index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = goals.map((g) => {
+      if (g.id === id) {
+        const total = g.targetCount ?? 0;
+        const current = g.completedCount ?? (g.completed ? total || 1 : 0);
+        // If clicking the current head box, step down by one; otherwise set to clicked box count
+        const nextCount = index + 1 === current ? index : index + 1;
+        const isDone = total > 0 ? nextCount >= total : nextCount > 0;
+        return {
+          ...g,
+          completedCount: nextCount,
+          completed: isDone,
+          status: isDone ? ("completed" as const) : ("pending" as const),
         };
       }
       return g;
@@ -142,11 +175,14 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
           </div>
         ) : (
           goals.map((goal) => {
+            const total = goal.targetCount ?? 0;
+            const current = goal.completedCount ?? (goal.completed ? total || 1 : 0);
             const currentStatus = goal.status || (goal.completed ? "completed" : "pending");
+
             return (
               <div
                 key={goal.id}
-                className={`flex items-start justify-between gap-3 rounded-lg border p-3 transition-colors ${
+                className={`rounded-lg border p-3 transition-colors ${
                   currentStatus === "completed" 
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" 
                     : currentStatus === "failed"
@@ -154,35 +190,66 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                     : "border-border bg-surface-2/60 text-foreground"
                 }`}
               >
-                <div 
-                  className="flex items-start gap-2.5 flex-1 cursor-pointer"
-                  onClick={() => toggleGoal(goal.id)}
-                >
-                  <CheckCircle2 className={`size-4 shrink-0 mt-0.5 ${currentStatus === "completed" ? "text-emerald-500" : "text-muted-foreground"}`} />
-                  <span className="text-xs font-medium whitespace-normal break-words leading-relaxed">
-                    {goal.text}
-                  </span>
+                <div className="flex items-start justify-between gap-3">
+                  <div 
+                    className="flex items-start gap-2.5 flex-1 cursor-pointer select-none"
+                    onClick={() => toggleGoal(goal.id)}
+                  >
+                    <CheckCircle2 className={`size-4 shrink-0 mt-0.5 ${currentStatus === "completed" ? "text-emerald-500" : "text-muted-foreground"}`} />
+                    <span className="text-xs font-medium whitespace-normal break-words leading-relaxed">
+                      {goal.text}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      currentStatus === "completed" 
+                        ? "bg-emerald-500/25 text-emerald-300" 
+                        : currentStatus === "failed"
+                        ? "bg-rose-500/25 text-rose-300"
+                        : "bg-amber-500/25 text-amber-300"
+                    }`}>
+                      {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-muted-foreground hover:text-rose-400 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteGoal(goal.id);
+                      }}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    currentStatus === "completed" 
-                      ? "bg-emerald-500/25 text-emerald-300" 
-                      : currentStatus === "failed"
-                      ? "bg-rose-500/25 text-rose-300"
-                      : "bg-amber-500/25 text-amber-300"
-                  }`}>
-                    {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : "Pending"}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground hover:text-rose-400 shrink-0"
-                    onClick={() => deleteGoal(goal.id)}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
+                {/* Render only when targetCount > 0 */}
+                {total > 0 && (
+                  <div className="mt-2.5 flex items-center gap-1.5 pl-6.5">
+                    {Array.from({ length: total }).map((_, idx) => {
+                      const checked = idx < current;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={(e) => handleSubCheck(goal.id, idx, e)}
+                          className={`size-5 rounded border flex items-center justify-center transition-all ${
+                            checked
+                              ? "bg-emerald-500 border-emerald-500 text-black shadow-sm"
+                              : "border-border bg-surface-2/80 hover:border-primary/60 text-transparent"
+                          }`}
+                        >
+                          <Check className={`size-3 stroke-[3] ${checked ? "opacity-100" : "opacity-0"}`} />
+                        </button>
+                      );
+                    })}
+                    <span className="text-[10px] text-muted-foreground/80 ml-1 font-mono">
+                      {current} of {total} done
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })
@@ -190,24 +257,46 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
       </div>
 
       {goals.length < 3 && (
-        <div className="flex gap-2 pt-1 items-end">
-          <textarea
-            ref={inputRef}
-            rows={1}
-            placeholder="Add weekly target (e.g. Code 30 mins daily)..."
-            value={newGoalText}
-            onChange={(e) => setNewGoalText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                addGoal();
-              }
-            }}
-            className="w-full min-h-[38px] max-h-32 resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
-          />
-          <Button size="sm" className="h-9 shrink-0 gap-1 self-stretch" onClick={addGoal}>
-            <Plus className="size-4" /> Add Target
-          </Button>
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Frequency Checkboxes:</span>
+            <div className="flex items-center gap-1">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setTargetCount(num)}
+                  className={`h-6 min-w-[24px] px-1.5 rounded text-[10px] font-bold transition-colors ${
+                    targetCount === num
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border bg-surface-2 text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {num === 0 ? "Single" : `${num}×`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 items-end">
+            <textarea
+              ref={inputRef}
+              rows={1}
+              placeholder="Add weekly target (e.g. Add treadmill finishers to 2 workouts)..."
+              value={newGoalText}
+              onChange={(e) => setNewGoalText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  addGoal();
+                }
+              }}
+              className="w-full min-h-[38px] max-h-32 resize-none rounded-lg border border-border bg-surface-2/40 px-3 py-2 text-xs leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none transition-all"
+            />
+            <Button size="sm" className="h-9 shrink-0 gap-1 self-stretch" onClick={addGoal}>
+              <Plus className="size-4" /> Add Target
+            </Button>
+          </div>
         </div>
       )}
     </section>

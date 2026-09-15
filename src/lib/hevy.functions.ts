@@ -4,6 +4,8 @@ export type HevySet = {
   type?: string | undefined;
   rpe?: number | null;
   notes?: string | null;
+  distanceMeters?: number | null;
+  durationSeconds?: number | null;
 };
 
 export type HevyExercise = {
@@ -64,13 +66,15 @@ export async function fetchLatestHevyWorkout({
           type?: string;
           rpe?: number | null;
           notes?: string | null;
+          distance_meters?: number | null;
+          duration_seconds?: number | null;
         }>;
       }>;
     }>;
   };
 
   const rawWorkouts = json.workouts ?? [];
-  
+
   const workouts: HevyWorkout[] = rawWorkouts.map((raw) => ({
     id: raw.id ?? "unknown",
     title: raw.title ?? "Untitled workout",
@@ -85,6 +89,8 @@ export async function fetchLatestHevyWorkout({
         type: s.type,
         rpe: s.rpe ?? null,
         notes: s.notes ?? null,
+        distanceMeters: s.distance_meters ?? null,
+        durationSeconds: s.duration_seconds ?? null,
       })),
     })),
   }));
@@ -95,7 +101,7 @@ export async function fetchLatestHevyWorkout({
     if (latestWorkout) {
       localStorage.setItem("p35_cached_workout", JSON.stringify(latestWorkout));
     }
-    
+
     if (workouts.length > 0) {
       const existingRaw = localStorage.getItem("p35_hevy_workouts");
       const existingWorkouts: HevyWorkout[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -111,7 +117,7 @@ export async function fetchLatestHevyWorkout({
       });
 
       localStorage.setItem("p35_hevy_workouts", JSON.stringify(mergedWorkouts));
-      
+
       return {
         workout: latestWorkout,
         workouts: mergedWorkouts,

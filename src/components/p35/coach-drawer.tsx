@@ -34,7 +34,7 @@ CONTEXT & TONE:
 - You are an expert strength and conditioning partner helping the athlete progress across 12-week blocks toward peak physical shape at age 35 (November 2029).
 - Match the user's intent. If they greet you ("hey", "hello"), respond naturally and ask what they want to tackle today.
 - If they ask general questions about exercise swaps, pain management, recovery, upcoming phases, or pacing, provide direct, intelligent advice grounded in their current block targets without forcing rigid templates.
-- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never covertly translate or alter their logged weight units. Keep responses crisp and actionable.
+- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never convert or translate their logged weight units. Keep responses crisp and actionable.
 
 WORKOUT ANALYSIS MODE:
 Trigger this specific structured format ONLY when the user explicitly asks to analyse, review, or evaluate a workout/session:
@@ -84,8 +84,6 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
               return `${timeString} (${kmString})`;
             }
 
-            // Detect if the value was stored as lbs or if we should display lbs based on input values (e.g. 27.5, 42.5)
-            // If weight is fractional or explicitly stored, respect the user's unit. Here we fall back to reading s.weightKg or s.weightLbs if present.
             const rawWeight = s.weightLbs ?? s.weightKg;
             const unitLabel = s.weightLbs != null ? "lbs" : "kg";
 
@@ -112,7 +110,7 @@ async function callGemini(
   newPrompt: string,
   systemContext: string,
 ) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const contents = [
     ...history.map((m) => ({

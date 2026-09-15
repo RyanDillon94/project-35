@@ -104,7 +104,7 @@ function Dashboard({ userId }: { userId: string }) {
         onSave={(entry) => save.mutateAsync(entry)}
       />
       <PhotoCheckpoint userId={userId} />
-      <Roadmap /><br></br>
+      <Roadmap />
 
       {/* Footer Management Section */}
       <div className="flex flex-col items-center gap-2 pt-4 border-t border-border/40">

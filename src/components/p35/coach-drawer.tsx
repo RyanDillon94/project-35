@@ -34,7 +34,7 @@ CONTEXT & TONE:
 - You are an expert strength and conditioning partner helping the athlete progress across 12-week blocks toward peak physical shape at age 35 (November 2029).
 - Match the user's intent. If they greet you ("hey", "hello"), respond naturally and ask what they want to tackle today.
 - If they ask general questions about exercise swaps, pain management, recovery, upcoming phases, or pacing, provide direct, intelligent advice grounded in their current block targets without forcing rigid templates.
-- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never convert or translate their logged weight units. Keep responses crisp and actionable.
+- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never covertly translate or alter their logged weight units. Keep responses crisp and actionable.
 
 WORKOUT ANALYSIS MODE:
 Trigger this specific structured format ONLY when the user explicitly asks to analyse, review, or evaluate a workout/session:
@@ -52,6 +52,23 @@ Trigger this specific structured format ONLY when the user explicitly asks to an
 - **Athlete Notes Feedback:** [details]
 
 - Conclude ONLY workout analyses with a 3-bullet "Next Session Battle Plan".`;
+
+// Matches HevyCard formatting exactly
+function formatWeight(weight: number | null | undefined, exerciseTitle: string) {
+  if (weight == null) return "BW";
+
+  const titleLower = exerciseTitle.toLowerCase();
+  const isCableOrLbs = titleLower.includes("cable") || titleLower.includes("pushdown");
+
+  if (isCableOrLbs) {
+    const weightLbs = weight * 2.20462;
+    const roundedLbs = Math.round(weightLbs * 10) / 10;
+    return `${roundedLbs}lbs`;
+  }
+
+  const roundedKg = Number.isInteger(weight) ? weight : Math.round(weight * 10) / 10;
+  return `${roundedKg}kg`;
+}
 
 function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   const block = getActiveBlockCountdown();
@@ -77,17 +94,15 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
           .map((s: any) => {
             const kmVal = s.distance ?? s.km ?? s.distanceMeters;
             const timeVal = s.time ?? s.durationSeconds ?? s.duration;
-            
+
             if (kmVal != null || timeVal != null || (s.weightKg == null && s.reps == null)) {
               const timeString = timeVal != null ? `${timeVal}` : "51:05";
               const kmString = kmVal != null ? `${kmVal} km` : "2.95 km";
               return `${timeString} (${kmString})`;
             }
 
-            const rawWeight = s.weightLbs ?? s.weightKg;
-            const unitLabel = s.weightLbs != null ? "lbs" : "kg";
-
-            return `${rawWeight ?? "BW"}${unitLabel} x ${s.reps ?? "?"}${
+            const weightDisplay = formatWeight(s.weightKg, ex.title);
+            return `${weightDisplay} x ${s.reps ?? "?"}${
               s.rpe != null ? ` @RPE${s.rpe}` : ""
             }`;
           })

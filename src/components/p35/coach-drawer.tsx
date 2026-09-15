@@ -34,12 +34,12 @@ CONTEXT & TONE:
 - You are an expert strength and conditioning partner helping the athlete progress across 12-week blocks toward peak physical shape at age 35 (November 2029).
 - Match the user's intent. If they greet you ("hey", "hello"), respond naturally and ask what they want to tackle today.
 - If they ask general questions about exercise swaps, pain management, recovery, upcoming phases, or pacing, provide direct, intelligent advice grounded in their current block targets without forcing rigid templates.
-- Kilograms for lifts; pounds for bodyweight. Keep responses crisp and actionable.
+- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never covertly translate or alter their logged weight units. Keep responses crisp and actionable.
 
 WORKOUT ANALYSIS MODE:
 Trigger this specific structured format ONLY when the user explicitly asks to analyse, review, or evaluate a workout/session:
 - Evaluate the final set RPE of each exercise logged:
-  * RPE < 7.0: PROMOTE (+2.5kg next session).
+  * RPE < 7.0: PROMOTE (+ load next session).
   * RPE 7.0–8.0: PROGRESS REPS (+1 rep next session).
   * RPE 8.5–9.0: STICK (Consolidate weight/form).
   * RPE 9.5–10.0: HOLD OR DROP (-1 rep).
@@ -84,7 +84,12 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
               return `${timeString} (${kmString})`;
             }
 
-            return `${s.weightKg ?? "BW"}kg x ${s.reps ?? "?"}${
+            // Detect if the value was stored as lbs or if we should display lbs based on input values (e.g. 27.5, 42.5)
+            // If weight is fractional or explicitly stored, respect the user's unit. Here we fall back to reading s.weightKg or s.weightLbs if present.
+            const rawWeight = s.weightLbs ?? s.weightKg;
+            const unitLabel = s.weightLbs != null ? "lbs" : "kg";
+
+            return `${rawWeight ?? "BW"}${unitLabel} x ${s.reps ?? "?"}${
               s.rpe != null ? ` @RPE${s.rpe}` : ""
             }`;
           })
@@ -258,7 +263,6 @@ export function CoachDrawer({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Coach is unavailable.";
       toast.error(errorMessage);
-      // Automatically surface the retry option on ANY error occurrence
       setLastFailedPrompt(trimmed);
     } finally {
       setLoading(false);

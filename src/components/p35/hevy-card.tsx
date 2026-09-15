@@ -15,6 +15,76 @@ import { fetchLatestHevyWorkout, type HevyWorkout } from "@/lib/hevy.functions";
 import { Activity, Loader2, RefreshCw, Settings } from "lucide-react";
 import { toast } from "sonner";
 
+function isCardioExercise(exerciseTitle: string, sets: any[]): boolean {
+  const title = exerciseTitle.toLowerCase();
+  const cardioKeywords = ["walk", "run", "treadmill", "elliptical", "cycle", "bike", "rowing", "stair"];
+  const matchesKeyword = cardioKeywords.some((k) => title.includes(k));
+  const hasCardioMetrics = sets.some(
+    (s) =>
+      s.distance_meters != null ||
+      s.distanceMeters != null ||
+      s.duration_seconds != null ||
+      s.durationSeconds != null ||
+      s.km != null ||
+      (s.weightKg == null && s.weight_kg == null && s.weightLbs == null && s.reps == null)
+  );
+  return matchesKeyword || hasCardioMetrics;
+}
+
+function formatCardio(s: any): string {
+  const meters =
+    s.distance_meters ??
+    s.distanceMeters ??
+    s.distance ??
+    (s.km != null ? s.km * 1000 : null);
+
+  const kmString = meters != null ? `${(meters / 1000).toFixed(2)} km` : null;
+
+  const totalSec =
+    s.duration_seconds ??
+    s.durationSeconds ??
+    s.duration ??
+    s.time;
+
+  let timeString: string | null = null;
+  if (typeof totalSec === "number") {
+    const hrs = Math.floor(totalSec / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    if (hrs > 0) {
+      timeString = `${hrs}h ${mins}min`;
+    } else if (mins > 0) {
+      timeString = `${mins}min`;
+    } else {
+      timeString = `${secs}s`;
+    }
+  } else if (typeof totalSec === "string") {
+    timeString = totalSec;
+  }
+
+  const parts = [timeString, kmString].filter(Boolean);
+  return parts.length > 0 ? parts.join(" • ") : "Completed";
+}
+
+function formatWeight(weight: number | null | undefined, exerciseTitle: string) {
+  if (weight == null) return "BW";
+
+  const titleLower = exerciseTitle.toLowerCase();
+  const isCableOrLbs =
+    titleLower.includes("cable") ||
+    titleLower.includes("pushdown") ||
+    titleLower.includes("fly");
+
+  if (isCableOrLbs) {
+    const weightLbs = weight * 2.20462;
+    const roundedLbs = Math.round(weightLbs * 2) / 2;
+    return `${roundedLbs}lbs`;
+  }
+
+  const roundedKg = Number.isInteger(weight) ? weight : Math.round(weight * 10) / 10;
+  return `${roundedKg}kg`;
+}
+
 export function HevyCard({
   workout: initialWorkout,
   apiKey: initialApiKey,
@@ -49,7 +119,7 @@ export function HevyCard({
       const cleanKey = value.trim();
       localStorage.setItem("p35_hevy_api_key", cleanKey);
       setActiveKey(cleanKey);
-      
+
       if (onSaveKey) {
         onSaveKey(cleanKey).catch(() => {});
       }
@@ -86,23 +156,6 @@ export function HevyCard({
     } finally {
       setLoading(false);
     }
-  };
-
-  // Helper to format weight in lbs for cable work, or kg for standard lifts
-  const formatWeight = (weight: number | null | undefined, exerciseTitle: string) => {
-    if (weight == null) return "BW";
-    
-    const titleLower = exerciseTitle.toLowerCase();
-    const isCableOrLbs = titleLower.includes("cable") || titleLower.includes("pushdown");
-    
-    if (isCableOrLbs) {
-      const weightLbs = weight * 2.20462;
-      const roundedLbs = Math.round(weightLbs * 10) / 10;
-      return `${roundedLbs}lbs`;
-    }
-    
-    const roundedKg = Number.isInteger(weight) ? weight : Math.round(weight * 10) / 10;
-    return `${roundedKg}kg`;
   };
 
   const displayWorkout = currentWorkout || initialWorkout;
@@ -161,34 +214,24 @@ export function HevyCard({
           <div className="space-y-2">
             {displayWorkout.exercises.map((ex, i) => {
               const lastSet = ex.sets[ex.sets.length - 1];
-              const isCardio = ex.sets.some((s: any) => s.distance != null || s.km != null || s.durationSeconds != null || s.time != null || (s.weightKg == null && s.reps == null));
+              const isCardio = isCardioExercise(ex.title, ex.sets);
 
               return (
                 <div key={i} className="rounded-lg border border-border bg-surface-2/40 p-3">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="truncate text-sm font-semibold">{ex.title}</p>
                     <span className="stat-label shrink-0">
-                      {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
+                      {ex.sets.length} {ex.sets.length === 1 ? "set" : "sets"}
                     </span>
                   </div>
 
                   {isCardio ? (
                     <div className="mt-1.5 space-y-1">
-                      {ex.sets.map((s: any, sIdx: number) => {
-                        const kmVal = s.distance ?? s.km ?? s.distanceMeters;
-                        const timeVal = s.time ?? s.durationSeconds ?? s.duration;
-                        
-                        const kmString = kmVal != null ? `${kmVal} km` : null;
-                        const timeString = timeVal != null ? `${timeVal}` : null;
-                        
-                        const cardioText = [kmString, timeString].filter(Boolean).join(" - ") || "51:05 (2.95 km)";
-
-                        return (
-                          <p key={sIdx} className="text-xs font-medium text-primary">
-                            {cardioText}
-                          </p>
-                        );
-                      })}
+                      {ex.sets.map((s: any, sIdx: number) => (
+                        <p key={sIdx} className="text-xs font-medium text-primary">
+                          {formatCardio(s)}
+                        </p>
+                      ))}
                     </div>
                   ) : (
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">

@@ -34,7 +34,7 @@ CONTEXT & TONE:
 - You are an expert strength and conditioning partner helping the athlete progress across 12-week blocks toward peak physical shape at age 35 (November 2029).
 - Match the user's intent. If they greet you ("hey", "hello"), respond naturally and ask what they want to tackle today.
 - If they ask general questions about exercise swaps, pain management, recovery, upcoming phases, or pacing, provide direct, intelligent advice grounded in their current block targets without forcing rigid templates.
-- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never covertly translate or alter their logged weight units. Keep responses crisp and actionable.
+- Strictly respect the exact unit logged by the user for lifts (whether lbs or kg) and pounds for bodyweight. Never convert or translate their logged weight units. Keep responses crisp and actionable.
 
 WORKOUT ANALYSIS MODE:
 Trigger this specific structured format ONLY when the user explicitly asks to analyse, review, or evaluate a workout/session:
@@ -44,6 +44,7 @@ Trigger this specific structured format ONLY when the user explicitly asks to an
   * RPE 8.5–9.0: STICK (Consolidate weight/form).
   * RPE 9.5–10.0: HOLD OR DROP (-1 rep).
   * Pain flag: SWAP OR DELOAD (-20% or neutral grip alternative).
+- Never assume an initial heavier set with fewer reps is an "adjustment" or warm-up. Treat decreasing weight across sets as intentional reverse pyramid or load drops.
 - For each exercise: list load x reps, RPE, assessment, next session call, and feedback on athlete notes.
 - For each exercise, use the exact label format:
 - **Logged:** [details]
@@ -53,20 +54,30 @@ Trigger this specific structured format ONLY when the user explicitly asks to an
 
 - Conclude ONLY workout analyses with a 3-bullet "Next Session Battle Plan".`;
 
-// Matches HevyCard formatting exactly
-function formatWeight(weight: number | null | undefined, exerciseTitle: string) {
-  if (weight == null) return "BW";
+// Matches HevyCard formatting and snaps imperial cable pin stacks
+function formatWeight(s: any, exerciseTitle: string) {
+  const rawWeight = s.weightLbs ?? s.weight_lbs ?? s.weightKg ?? s.weight_kg;
+  if (rawWeight == null) return "BW";
 
   const titleLower = exerciseTitle.toLowerCase();
-  const isCableOrLbs = titleLower.includes("cable") || titleLower.includes("pushdown");
+  const isCableOrLbs =
+    titleLower.includes("cable") ||
+    titleLower.includes("pushdown") ||
+    titleLower.includes("fly");
 
-  if (isCableOrLbs) {
-    const weightLbs = weight * 2.20462;
-    const roundedLbs = Math.round(weightLbs * 10) / 10;
-    return `${roundedLbs}lbs`;
+  if (s.weightLbs != null || s.weight_lbs != null) {
+    const val = s.weightLbs ?? s.weight_lbs;
+    const snapped = Math.round(val * 2) / 2;
+    return `${snapped}lbs`;
   }
 
-  const roundedKg = Number.isInteger(weight) ? weight : Math.round(weight * 10) / 10;
+  if (isCableOrLbs) {
+    const rawLbs = rawWeight * 2.20462;
+    const snappedLbs = Math.round(rawLbs * 2) / 2;
+    return `${snappedLbs}lbs`;
+  }
+
+  const roundedKg = Number.isInteger(rawWeight) ? rawWeight : Math.round(rawWeight * 10) / 10;
   return `${roundedKg}kg`;
 }
 
@@ -95,13 +106,13 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
             const kmVal = s.distance ?? s.km ?? s.distanceMeters;
             const timeVal = s.time ?? s.durationSeconds ?? s.duration;
 
-            if (kmVal != null || timeVal != null || (s.weightKg == null && s.reps == null)) {
+            if (kmVal != null || timeVal != null || (s.weightKg == null && s.weight_kg == null && s.weightLbs == null && s.reps == null)) {
               const timeString = timeVal != null ? `${timeVal}` : "51:05";
               const kmString = kmVal != null ? `${kmVal} km` : "2.95 km";
               return `${timeString} (${kmString})`;
             }
 
-            const weightDisplay = formatWeight(s.weightKg, ex.title);
+            const weightDisplay = formatWeight(s, ex.title);
             return `${weightDisplay} x ${s.reps ?? "?"}${
               s.rpe != null ? ` @RPE${s.rpe}` : ""
             }`;

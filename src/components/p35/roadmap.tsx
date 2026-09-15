@@ -142,6 +142,11 @@ export function Roadmap() {
           </AccordionItem>
         ))}
       </Accordion>
+      <div className="flex flex-col items-center gap-2 pt-2">
+        <p className="text-center text-sm italic tracking-wide text-primary/90 font-medium">
+          &ldquo;Only cunts drink on weekdays... Don&apos;t be a cunt.&rdquo;
+        </p><br></br>
+      </div>
     </section>
   );
 }

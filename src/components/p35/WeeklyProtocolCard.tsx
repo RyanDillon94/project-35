@@ -261,7 +261,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Frequency Checkboxes:</span>
             <div className="flex items-center gap-1">
-              {[0, 1, 2, 3, 4, 5, 6, 7].map((num) => (
+              {[0, 2, 3, 4, 5, 6, 7].map((num) => (
                 <button
                   key={num}
                   type="button"

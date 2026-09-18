@@ -65,7 +65,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalCompleted: number;
     overallPercentage: number;
     habitBreakdown: { label: string; completed: number; total: number }[];
-    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending"; targetCount?: number; completedCount?: number }[];
+    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending"; targetCount?: number; completedCount?: number; failReason?: string }[];
     weightHistory: { date: string; weight: number }[];
     journals: string[];
     aiSummary: string;
@@ -196,9 +196,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       
       weeklyProtocolGoals.forEach((g: any) => {
         if (g.completed || g.status === "completed") {
-          totalGoalPercentages += 100; // Fully smashed
+          totalGoalPercentages += 100;
         } else if (g.targetCount && g.targetCount > 0) {
-          // Add partial credit for ticked boxes
           const current = g.completedCount || 0;
           totalGoalPercentages += (current / g.targetCount) * 100;
         }
@@ -255,7 +254,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         ? summaryData.weeklyProtocolGoals
             .map((g) => {
               const countText = (g.targetCount && g.targetCount > 0) ? ` (${g.completedCount || 0}/${g.targetCount})` : "";
-              return `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}${countText}]`;
+              const failText = (g.status === "failed" && g.failReason) ? ` - Reason: ${g.failReason}` : "";
+              return `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}${countText}]${failText}`;
             })
             .join("\n")
         : "No weekly execution focus targets logged.";
@@ -443,6 +443,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                           <span className={`text-xs font-medium ${currentStatus === "completed" ? "text-emerald-400" : currentStatus === "failed" ? "text-rose-400 line-through opacity-80" : "text-foreground"}`}>
                             {g.text}
                           </span>
+                          {g.failReason && currentStatus === "failed" && (
+                            <span className="text-[11px] text-rose-300/80 italic pl-1">Reason: {g.failReason}</span>
+                          )}
                           <div className="flex items-center justify-between gap-2">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                               currentStatus === "completed" 

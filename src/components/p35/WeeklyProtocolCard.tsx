@@ -11,6 +11,7 @@ export type WeeklyProtocolGoal = {
   status?: "completed" | "failed" | "pending";
   targetCount?: number; // 0 = single check, 1-7 = multiple tickboxes
   completedCount?: number;
+  failReason?: string;
 };
 
 export function getMondayKeyForDate(dateStr?: string) {
@@ -87,6 +88,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
         status: "pending",
         targetCount,
         completedCount: 0,
+        failReason: "",
       },
     ];
     setGoals(updated);
@@ -123,9 +125,18 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
         return {
           ...g,
           status: "failed" as const,
-          // Keep completedCount as is so you retain your partial credit (e.g., 1 of 2)
           completed: false, 
         };
+      }
+      return g;
+    });
+    setGoals(updated);
+  };
+
+  const updateFailReason = (id: string, reason: string) => {
+    const updated = goals.map((g) => {
+      if (g.id === id) {
+        return { ...g, failReason: reason };
       }
       return g;
     });
@@ -202,7 +213,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   currentStatus === "completed" 
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" 
                     : currentStatus === "failed"
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300 line-through opacity-80"
+                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
                     : "border-border bg-surface-2/60 text-foreground"
                 }`}
               >
@@ -212,7 +223,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                     onClick={() => toggleGoal(goal.id)}
                   >
                     <CheckCircle2 className={`size-4 shrink-0 mt-0.5 ${currentStatus === "completed" ? "text-emerald-500" : "text-muted-foreground"}`} />
-                    <span className="text-xs font-medium whitespace-normal break-words leading-relaxed">
+                    <span className={`text-xs font-medium whitespace-normal break-words leading-relaxed ${currentStatus === "failed" ? "line-through opacity-80" : ""}`}>
                       {goal.text}
                     </span>
                   </div>
@@ -254,7 +265,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   </div>
                 </div>
 
-                {/* Render only when targetCount > 0 */}
+                {/* Render Tickboxes */}
                 {total > 0 && (
                   <div className="mt-2.5 flex items-center gap-1.5 pl-6.5">
                     {Array.from({ length: total }).map((_, idx) => {
@@ -277,6 +288,20 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                     <span className="text-[10px] text-muted-foreground/80 ml-1 font-mono">
                       {current} of {total} done
                     </span>
+                  </div>
+                )}
+
+                {/* Fail Reason Input */}
+                {currentStatus === "failed" && (
+                  <div className="mt-3 pl-6.5">
+                    <input
+                      type="text"
+                      placeholder="Why did you miss this target?"
+                      value={goal.failReason || ""}
+                      onChange={(e) => updateFailReason(goal.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-full bg-rose-500/5 border border-rose-500/20 rounded px-2.5 py-1.5 text-[11px] text-rose-200 placeholder:text-rose-400/40 focus:outline-none focus:border-rose-400/50 transition-colors"
+                    />
                   </div>
                 )}
               </div>

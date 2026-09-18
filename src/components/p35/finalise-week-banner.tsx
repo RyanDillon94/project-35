@@ -9,7 +9,7 @@ import {
   GOAL_WEIGHT 
 } from "@/lib/project35";
 import { triggerFridayBackup } from "@/lib/p35-cloud";
-import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, CheckCircle, XCircle, Check } from "lucide-react";
+import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { getMondayKeyForDate } from "./WeeklyProtocolCard";
 
@@ -65,7 +65,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalCompleted: number;
     overallPercentage: number;
     habitBreakdown: { label: string; completed: number; total: number }[];
-    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending" }[];
+    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending"; targetCount?: number; completedCount?: number }[];
     weightHistory: { date: string; weight: number }[];
     journals: string[];
     aiSummary: string;
@@ -79,7 +79,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const isSunday = today.getUTCDay() === 0;
 
     const weekKey = `p35_finalised_week_${todayStr}`;
-    const isFinalised = localStorage.getItem(weekKey) !== null;
+    const lastLocked = localStorage.getItem("p35_last_locked_week");
+    const isFinalised = localStorage.getItem(weekKey) !== null || lastLocked === todayStr;
 
     let hasWeighedInToday = false;
     let weightHistory: { date: string; weight: number }[] = [];
@@ -191,8 +192,19 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     let protocolScore = -1;
     if (weeklyProtocolGoals.length > 0) {
-      const protocolCompleted = weeklyProtocolGoals.filter((g: any) => g.completed || g.status === "completed").length;
-      protocolScore = (protocolCompleted / weeklyProtocolGoals.length) * 100;
+      let totalGoalPercentages = 0;
+      
+      weeklyProtocolGoals.forEach((g: any) => {
+        if (g.completed || g.status === "completed") {
+          totalGoalPercentages += 100; // Fully smashed
+        } else if (g.targetCount && g.targetCount > 0) {
+          // Add partial credit for ticked boxes
+          const current = g.completedCount || 0;
+          totalGoalPercentages += (current / g.targetCount) * 100;
+        }
+      });
+
+      protocolScore = totalGoalPercentages / weeklyProtocolGoals.length;
     }
 
     let overallPercentage = Math.round(habitScore);
@@ -222,41 +234,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     calculateWeekData();
   }, [calculateWeekData]);
 
-  const handleUpdateGoalStatus = (id: string, status: "completed" | "failed") => {
-    if (!summaryData) return;
-
-    const updatedGoals = summaryData.weeklyProtocolGoals.map((g) => {
-      if (g.id === id) {
-        return {
-          ...g,
-          status,
-          completed: status === "completed",
-        };
-      }
-      return g;
-    });
-
-    const habitScore = summaryData.totalPossible > 0 ? (summaryData.totalCompleted / summaryData.totalPossible) * 100 : 0;
-    const protocolCompleted = updatedGoals.filter((g: any) => g.completed || g.status === "completed").length;
-    const protocolScore = updatedGoals.length > 0 ? (protocolCompleted / updatedGoals.length) * 100 : -1;
-
-    let overallPercentage = Math.round(habitScore);
-    if (protocolScore >= 0) {
-      overallPercentage = Math.round(habitScore * 0.7 + protocolScore * 0.3);
-    }
-
-    setSummaryData({ 
-      ...summaryData, 
-      weeklyProtocolGoals: updatedGoals,
-      overallPercentage: Math.min(100, Math.max(0, overallPercentage))
-    });
-
-    const activeDate = todayKey();
-    const mondayKey = getMondayKeyForDate(activeDate);
-    localStorage.setItem(`p35_weekly_protocol_${mondayKey}`, JSON.stringify(updatedGoals));
-    toast.success(`Target marked as ${status === "completed" ? "Smashed" : "Failed"}.`);
-  };
-
   const generateAiSummary = async () => {
     if (!summaryData) return;
     
@@ -276,7 +253,10 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         
       const protocolText = summaryData.weeklyProtocolGoals.length > 0
         ? summaryData.weeklyProtocolGoals
-            .map((g) => `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}]`)
+            .map((g) => {
+              const countText = (g.targetCount && g.targetCount > 0) ? ` (${g.completedCount || 0}/${g.targetCount})` : "";
+              return `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}${countText}]`;
+            })
             .join("\n")
         : "No weekly execution focus targets logged.";
 
@@ -333,7 +313,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const weekKey = `p35_finalised_week_${todayStr}`;
     const overallPct = summaryData.overallPercentage ?? 0;
     
-    // Grab all p35_ keys from localStorage to ensure full backup payload parity with export
     const fullBackupData: Record<string, string> = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -350,11 +329,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       breakdown: summaryData.habitBreakdown ?? [],
       weeklyProtocolGoals: summaryData.weeklyProtocolGoals ?? [],
       aiSynthesis: summaryData.aiSummary ?? "",
-      fullLocalStorageSnapshot: fullBackupData, // Bundles complete app state
+      fullLocalStorageSnapshot: fullBackupData,
     };
 
     try {
       localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
+      localStorage.setItem("p35_last_locked_week", todayStr);
       await triggerFridayBackup(todayStr);
     } catch (err) {
       console.error("Failed to save weekly archive or trigger backup", err);
@@ -450,11 +430,14 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
-                    
+                    <span className="text-[10px] text-muted-foreground italic">Check dashboard to amend</span>
                   </div>
                   <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
                     {summaryData.weeklyProtocolGoals.map((g) => {
                       const currentStatus = g.status || (g.completed ? "completed" : "pending");
+                      const current = g.completedCount || 0;
+                      const total = g.targetCount || 0;
+                      
                       return (
                         <div key={g.id} className="flex flex-col gap-2 py-2 border-b border-border/40 last:border-0">
                           <span className={`text-xs font-medium ${currentStatus === "completed" ? "text-emerald-400" : currentStatus === "failed" ? "text-rose-400 line-through opacity-80" : "text-foreground"}`}>
@@ -468,26 +451,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                                 ? "bg-rose-500/20 text-rose-300" 
                                 : "bg-amber-500/20 text-amber-300"
                             }`}>
-                              {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : "Pending"}
+                              {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
                             </span>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant={currentStatus === "completed" ? "default" : "outline"}
-                                className="h-6 px-2 text-[10px] gap-1"
-                                onClick={() => handleUpdateGoalStatus(g.id, "completed")}
-                              >
-                                <CheckCircle className="size-3" /> Confirm Smashed
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={currentStatus === "failed" ? "destructive" : "outline"}
-                                className="h-6 px-2 text-[10px] gap-1"
-                                onClick={() => handleUpdateGoalStatus(g.id, "failed")}
-                              >
-                                <XCircle className="size-3" /> Confirm Failed
-                              </Button>
-                            </div>
                           </div>
                         </div>
                       );

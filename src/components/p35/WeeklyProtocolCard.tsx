@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Check } from "lucide-react";
+import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Check, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { todayKey } from "@/lib/project35";
 
@@ -116,6 +116,22 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
     setGoals(updated);
   };
 
+  const markFailed = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = goals.map((g) => {
+      if (g.id === id) {
+        return {
+          ...g,
+          status: "failed" as const,
+          // Keep completedCount as is so you retain your partial credit (e.g., 1 of 2)
+          completed: false, 
+        };
+      }
+      return g;
+    });
+    setGoals(updated);
+  };
+
   // Sub-tickbox tap handler (index 0 to targetCount - 1)
   const handleSubCheck = (id: string, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -201,8 +217,8 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mr-1 ${
                       currentStatus === "completed" 
                         ? "bg-emerald-500/25 text-emerald-300" 
                         : currentStatus === "failed"
@@ -211,6 +227,19 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                     }`}>
                       {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
                     </span>
+                    
+                    {currentStatus === "pending" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-muted-foreground hover:text-rose-400 shrink-0"
+                        onClick={(e) => markFailed(goal.id, e)}
+                        title="Mark as Failed"
+                      >
+                        <XCircle className="size-3.5" />
+                      </Button>
+                    )}
+
                     <Button
                       variant="ghost"
                       size="icon"

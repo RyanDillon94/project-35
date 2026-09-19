@@ -76,7 +76,6 @@ export function WeeklyTrendsAnalytics() {
       let totalPossible = 0;
       let totalCompleted = 0;
 
-      // 1. Calculate Daily Habit checks for the week
       for (let i = 0; i < 7; i++) {
         const d = new Date(monday);
         d.setDate(monday.getDate() + i);
@@ -113,7 +112,6 @@ export function WeeklyTrendsAnalytics() {
 
       const habitScore = totalPossible > 0 ? (totalCompleted / totalPossible) * 100 : 0;
 
-      // 2. Calculate Weekly Execution Protocol targets for this Monday's key
       const mondayKey = monday.toISOString().slice(0, 10);
       let protocolScore = -1;
       try {
@@ -127,10 +125,8 @@ export function WeeklyTrendsAnalytics() {
         }
       } catch {}
 
-      // 3. Combine habit adherence and protocol score if protocol targets exist for the week
       let finalScore = Math.round(habitScore);
       if (protocolScore >= 0) {
-        // Blended weight: 70% daily habits, 30% weekly execution protocol targets (or average them)
         finalScore = Math.round(habitScore * 0.7 + protocolScore * 0.3);
       }
 
@@ -172,19 +168,19 @@ export function WeeklyTrendsAnalytics() {
   };
 
   return (
-    <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5">
+    <div className="panel flex items-center justify-between w-full p-4">
       <div className="flex items-center gap-3 min-w-0 pr-2">
         <TrendingUp className="size-5 shrink-0 text-primary" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold truncate text-foreground">Weekly Trends & Analytics</p>
+          <p className="text-sm font-bold truncate text-foreground">Weekly Trends & Analytics</p>
           <p className="text-xs text-muted-foreground truncate">Review 4-week compliance history</p>
         </div>
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
-            <BarChart3 className="size-4" />
+          <Button variant="secondary" size="sm" className="gap-1.5 h-8 text-xs shrink-0 pointer-events-auto">
+            <BarChart3 className="size-3.5" />
             Trends
           </Button>
         </DialogTrigger>
@@ -197,7 +193,6 @@ export function WeeklyTrendsAnalytics() {
           </DialogHeader>
 
           <div className="space-y-5 pt-2">
-            {/* Weekly Adherence Section */}
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg border border-border bg-surface-2/60 p-3 text-center space-y-1">
                 <p className="stat-label flex items-center justify-center gap-1">
@@ -240,7 +235,6 @@ export function WeeklyTrendsAnalytics() {
               Adherence is calculated dynamically based on weekday rules and weekly execution protocol targets.
             </p>
 
-            {/* 4-Week Training Progress Section */}
             <div className="mt-6 pt-5 border-t border-border space-y-4">
               <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
                 4-Week Training Progress
@@ -321,7 +315,6 @@ export function WeeklyTrendsAnalytics() {
               </div>
             </div>
 
-            {/* Open Hevy App Button */}
             <div className="pt-2">
               <a
                 href="hevy://"

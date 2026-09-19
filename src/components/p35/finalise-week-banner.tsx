@@ -20,9 +20,9 @@ function getCoachSystemPrompt() {
 Rules:
 - Celebrate only earned wins, briefly. No hype, no filler, no emoji.
 - Athlete Phase Context: Phase ${activePhase.id} (${activePhase.title}) — ${activeBlock.name}. Focus: ${activeBlock.focus.join(", ")}. Phase Summary: ${activePhase.summary}
-- Live Targets: ${DAILY_TARGETS.caloriesMin.toLocaleString()}–${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps.toLocaleString()} steps daily, routine standard: "${DAILY_TARGETS.routine}", target benchmark: ${GOAL_WEIGHT} lbs, arriving at 35 in November 2029 in undeniable shape.
-- Kilograms in, kilograms out for lifts; pounds for bodyweight.
-- Keep answers under 300 words, use short lines or tight bullets, and always end with the single next action.`;
+- Live Targets: ${DAILY_TARGETS.caloriesMin.toLocaleString()}–${DAILY_TARGETS.caloriesMax.toLocaleString()} kcal, ${DAILY_TARGETS.protein}g+ protein, ${DAILY_TARGETS.steps.toLocaleString()} steps daily, routine standard: "${DAILY_TARGETS.routine}", target benchmark: ${GOAL_WEIGHT} lbs.
+- UNIT FIDELITY: Mirror the exact units logged in the Hevy payload (kg or lbs). Pounds for bodyweight.
+- MANDATORY FORMATTING: You must output the review using EXACTLY four headers. Do not change them. Do not generate empty bullet points. Keep answers under 350 words.`;
 }
 
 function FormattedSynthesis({ text }: { text: string }) {
@@ -34,7 +34,7 @@ function FormattedSynthesis({ text }: { text: string }) {
 
         if (trimmed.startsWith("**") && trimmed.endsWith("**") && !trimmed.slice(2, -2).includes("**")) {
           return (
-            <p key={i} className="font-bold text-primary pt-2 first:pt-0 text-sm">
+            <p key={i} className="font-bold text-primary pt-3 first:pt-0 text-sm">
               {trimmed.slice(2, -2)}
             </p>
           );
@@ -68,6 +68,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending"; targetCount?: number; completedCount?: number; notes?: string }[];
     weightHistory: { date: string; weight: number }[];
     journals: string[];
+    hevyWorkouts: string[];
     aiSummary: string;
     hasWeighedInToday: boolean;
     isFinalised: boolean;
@@ -84,6 +85,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     let hasWeighedInToday = false;
     let weightHistory: { date: string; weight: number }[] = [];
+    const validWeekDates = new Set<string>();
 
     try {
       const rawWeights = userId 
@@ -124,11 +126,14 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     let totalPossibleChecks = 0;
     let totalCompletedChecks = 0;
     const journals: string[] = [];
+    const hevyWorkouts: string[] = [];
 
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(today.getUTCDate() - i);
       const k = d.toISOString().slice(0, 10);
+      validWeekDates.add(k);
+      
       const dayOfWeek = d.getUTCDay();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
@@ -142,9 +147,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
 
       dayHabits.forEach((h) => {
-        if (h.key.startsWith("weekend_")) {
-          return;
-        }
+        if (h.key.startsWith("weekend_")) return;
 
         const labelLower = h.label.toLowerCase();
         const isWeekdayOnly = 
@@ -174,6 +177,32 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       if (rawJournal && rawJournal.trim()) {
         journals.push(`${k}: ${rawJournal.trim()}`);
       }
+    }
+
+    // Extract Hevy Workouts for the week
+    try {
+      const allHevyRaw = localStorage.getItem("p35_hevy_workouts") || localStorage.getItem("hevy_cache");
+      if (allHevyRaw) {
+        const parsedHevy = JSON.parse(allHevyRaw);
+        const workoutsArray = Array.isArray(parsedHevy) ? parsedHevy : (parsedHevy.workouts || []);
+        
+        workoutsArray.forEach((w: any) => {
+          const workoutDate = w.start_time?.slice(0, 10) || w.startTime?.slice(0, 10);
+          if (workoutDate && validWeekDates.has(workoutDate)) {
+            const exSummary = w.exercises?.map((ex: any) => {
+              const setsSummary = ex.sets?.map((s: any) => {
+                const weight = s.weightKg ?? s.weightLbs ?? s.weight ?? "BW";
+                const unit = s.weightLbs != null ? "lbs" : "kg";
+                return `${weight}${unit}x${s.reps}`;
+              }).join(", ");
+              return `${ex.title} (${setsSummary})`;
+            }).join(" | ");
+            hevyWorkouts.push(`${workoutDate}: ${w.title} - ${exSummary}`);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Failed to parse Hevy workouts for synthesis", e);
     }
 
     const finalizedBreakdown = Object.values(habitStats).map((stat) => {
@@ -217,7 +246,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const overallPercentage = Math.round(finalScore);
 
     setSummaryData((prev) => {
-      // FIX: Preserve existing AI summary if it's already generated to stop race conditions wiping it
       const currentAiSummary = prev?.aiSummary;
       const keepExisting = currentAiSummary && currentAiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict.";
 
@@ -231,6 +259,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         weeklyProtocolGoals,
         weightHistory,
         journals,
+        hevyWorkouts,
         aiSummary: keepExisting ? currentAiSummary : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
         hasWeighedInToday,
         isFinalised,
@@ -255,6 +284,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     setLoadingAi(true);
     try {
       const journalText = summaryData.journals.length > 0 ? summaryData.journals.join("\n") : "No daily journal notes recorded this week.";
+      const hevyText = summaryData.hevyWorkouts.length > 0 ? summaryData.hevyWorkouts.join("\n") : "No Hevy workouts logged this week.";
       const breakdownText = summaryData.habitBreakdown
         .map((h) => `- ${h.label}: ${h.completed}/${h.total}`)
         .join("\n");
@@ -273,25 +303,35 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         ? summaryData.weightHistory.map((w) => `- ${w.date}: ${w.weight} lbs`).join("\n")
         : "No weigh-ins logged recently.";
 
-      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nRecent Bodyweight Log:\n${weightText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
+      const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nRecent Bodyweight Log:\n${weightText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nLifting Sessions (Hevy):\n${hevyText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = "Review my completed week based on my performance data, recent bodyweight trend, weekly execution protocol targets, and journal notes. Seamlessly weave my weight progress and execution protocol targets (along with their Smashed/Failed/Pending status and any custom notes) into your standard narrative and verdict sections. Maintain a sharp, direct, conversational coaching tone blending physical adherence and lifestyle execution. If compliance or weight trend is off-track, tell me to sort my shit out.";
+      const userPrompt = `Review my completed week based on the performance data, bodyweight trend, protocol targets, journal notes, and workout logs.
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+You MUST structure your response EXACTLY with these four markdown headers and nothing else:
+
+**The Numbers**
+(Brief bulleted summary of scale weight changes, protocol status, and habit compliance metrics)
+
+**The Standard**
+(Your hard-hitting narrative on my execution, protocol notes, journal entries, and lifestyle discipline. Weave it together. If compliance is off, tell me to sort my shit out.)
+
+**The Iron**
+(Review my lifting sessions based on the provided Hevy logs. Call out consistency and sets. If no workouts are logged, call it out.)
+
+**Next Action**
+(A single, highly specific directive for tomorrow morning.)
+
+Do NOT output any empty bullet points. Do NOT alter the headers.`;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: {
-            parts: [
-              {
-                text: `${getCoachSystemPrompt()}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}`,
-              },
-            ],
+            parts: [{ text: `${getCoachSystemPrompt()}\n\nATHLETE PROFILE & LIVE METRICS:\n${contextBundle}` }],
           },
-          contents: [
-            { role: "user", parts: [{ text: userPrompt }] }
-          ],
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
         }),
       });
 
@@ -322,7 +362,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const weekKey = `p35_finalised_week_${todayStr}`;
     const overallPct = summaryData.overallPercentage ?? 0;
     
-    // Inject Date & Phase UI Data
     const { activePhase, activeBlock } = getActiveBlockDetails();
     const mondayKey = getMondayKeyForDate(todayStr);
     const formatShortDate = (dStr: string) => new Date(dStr).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" });
@@ -346,7 +385,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       totalPossible: summaryData.totalPossible ?? 0,
       breakdown: summaryData.habitBreakdown ?? [],
       weeklyProtocolGoals: summaryData.weeklyProtocolGoals ?? [],
-      // Ensure we don't save the placeholder if they forgot to generate
       aiSynthesis: summaryData.aiSummary.includes("Tap below to generate") ? "" : summaryData.aiSummary,
       fullLocalStorageSnapshot: fullBackupData,
     };

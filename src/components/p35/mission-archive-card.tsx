@@ -61,19 +61,17 @@ export function MissionArchiveCard() {
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-        <div className="panel flex items-center justify-between p-4 cursor-pointer hover:border-primary/50 transition-colors w-full">
-          <div className="flex items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/20 text-primary">
-              <Archive className="size-5" />
-            </div>
-            <div className="text-left">
-              <h3 className="text-sm font-bold text-foreground">Mission Archive</h3>
-              <p className="text-xs text-muted-foreground">Historical weekly reviews & protocols</p>
+                <SheetTrigger asChild>
+        <div className="panel flex items-center justify-between p-4 cursor-pointer hover:border-primary/50 transition-colors w-full gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <Archive className="size-5 shrink-0 text-primary" />
+            <div className="min-w-0 w-full text-left">
+              <p className="text-sm font-bold truncate text-foreground">Mission Archive</p>
+              <p className="text-xs text-muted-foreground truncate w-full">Historical weekly reviews & protocols</p>
             </div>
           </div>
           <div className="flex items-center shrink-0">
-            <Button variant="secondary" size="sm" className="pointer-events-none gap-1.5 h-8 text-xs">
+            <Button variant="outline" size="sm" className="pointer-events-none gap-1.5 h-8 text-xs">
               <Archive className="size-3.5" /> View
             </Button>
           </div>

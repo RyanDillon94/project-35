@@ -5,26 +5,18 @@ export function TestModePanel() {
   const [activeDate, setActiveDate] = useState(getCurrentDateString());
   const isMockActive = !!localStorage.getItem('p35_test_date');
 
-  const clearFinalisedWeeks = () => {
-    Object.keys(localStorage).forEach(k => {
-      if (k.startsWith('p35_finalised_week_')) {
-        localStorage.removeItem(k);
-      }
-    });
-  };
-
   const shiftDays = (days) => {
     const current = new Date(activeDate);
     current.setDate(current.getDate() + days);
     const newStr = current.toISOString().split('T')[0];
     localStorage.setItem('p35_test_date', newStr);
-    clearFinalisedWeeks();
+    // REMOVED clearFinalisedWeeks() so it stops deleting your archives!
     window.location.reload();
   };
 
   const resetToLive = () => {
     localStorage.removeItem('p35_test_date');
-    clearFinalisedWeeks();
+    // REMOVED clearFinalisedWeeks()
     window.location.reload();
   };
 

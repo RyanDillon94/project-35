@@ -216,23 +216,27 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   
     const overallPercentage = Math.round(finalScore);
 
-    setSummaryData((prev) => ({
-      isSunday,
-      isPhotoWeek,
-      totalPossible: totalPossibleChecks,
-      totalCompleted: totalCompletedChecks,
-      overallPercentage: Math.min(100, Math.max(0, overallPercentage)),
-      habitBreakdown: finalizedBreakdown,
-      weeklyProtocolGoals,
-      weightHistory,
-      journals,
-      aiSummary: prev?.aiSummary && hasGenerated 
-        ? prev.aiSummary 
-        : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
-      hasWeighedInToday,
-      isFinalised,
-    }));
-  }, [hasGenerated, userId]);
+    setSummaryData((prev) => {
+      // FIX: Preserve existing AI summary if it's already generated to stop race conditions wiping it
+      const currentAiSummary = prev?.aiSummary;
+      const keepExisting = currentAiSummary && currentAiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict.";
+
+      return {
+        isSunday,
+        isPhotoWeek,
+        totalPossible: totalPossibleChecks,
+        totalCompleted: totalCompletedChecks,
+        overallPercentage: Math.min(100, Math.max(0, overallPercentage)),
+        habitBreakdown: finalizedBreakdown,
+        weeklyProtocolGoals,
+        weightHistory,
+        journals,
+        aiSummary: keepExisting ? currentAiSummary : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
+        hasWeighedInToday,
+        isFinalised,
+      };
+    });
+  }, [userId]);
 
   useEffect(() => {
     calculateWeekData();
@@ -318,6 +322,12 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const weekKey = `p35_finalised_week_${todayStr}`;
     const overallPct = summaryData.overallPercentage ?? 0;
     
+    // Inject Date & Phase UI Data
+    const { activePhase, activeBlock } = getActiveBlockDetails();
+    const mondayKey = getMondayKeyForDate(todayStr);
+    const formatShortDate = (dStr: string) => new Date(dStr).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" });
+    const dateRangeStr = `${formatShortDate(mondayKey)} - ${formatShortDate(todayStr)}`;
+
     const fullBackupData: Record<string, string> = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -328,12 +338,16 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
     const weekArchiveRecord = {
       date: todayStr,
+      dateRange: dateRangeStr,
+      phaseTitle: `Phase ${activePhase.id}: ${activePhase.title}`,
+      blockName: activeBlock.name,
       overallPercentage: overallPct,
       totalCompleted: summaryData.totalCompleted ?? 0,
       totalPossible: summaryData.totalPossible ?? 0,
       breakdown: summaryData.habitBreakdown ?? [],
       weeklyProtocolGoals: summaryData.weeklyProtocolGoals ?? [],
-      aiSynthesis: summaryData.aiSummary ?? "",
+      // Ensure we don't save the placeholder if they forgot to generate
+      aiSynthesis: summaryData.aiSummary.includes("Tap below to generate") ? "" : summaryData.aiSummary,
       fullLocalStorageSnapshot: fullBackupData,
     };
 

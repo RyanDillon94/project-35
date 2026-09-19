@@ -16,6 +16,8 @@ import { TestModePanel } from '../components/TestModePanel';
 import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
 import { StrengthCard } from "@/components/p35/StrengthCard";
 import { todayKey } from "@/lib/project35";
+import { MissionArchiveCard } from "@/components/p35/mission-archive-card";
+
 
 
 export const Route = createFileRoute("/")({
@@ -126,6 +128,7 @@ function Dashboard({ userId }: { userId: string }) {
       {/* Footer Management Section */}
       <div className="flex flex-col items-center gap-2 pt-4 border-t border-border/40">
         <WeeklyTrendsAnalytics/>
+  <MissionArchiveCard />
         <DeloadCard />
         <DataBackupCard />
       </div>

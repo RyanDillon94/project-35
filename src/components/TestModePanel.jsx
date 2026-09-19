@@ -37,6 +37,8 @@ export function TestModePanel() {
         Simulated Date: <span style={{ color: '#fff', fontWeight: 'bold' }}>{activeDate}</span> {isMockActive ? '(TEST ACTIVE)' : '(LIVE)'}
       </div>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button onClick={() => shiftDays(-7)} style={buttonStyle}>-1 Week</button>
+        <button onClick={() => shiftDays(-1)} style={buttonStyle}>-1 Day</button>
         <button onClick={() => shiftDays(1)} style={buttonStyle}>+1 Day</button>
         <button onClick={() => shiftDays(7)} style={buttonStyle}>+1 Week</button>
         <button onClick={() => shiftDays(30)} style={buttonStyle}>+30 Days</button>

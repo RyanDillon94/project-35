@@ -188,28 +188,33 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalPossibleChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.total, 0);
     totalCompletedChecks = finalizedBreakdown.reduce((acc, curr) => acc + curr.completed, 0);
 
-    const habitScore = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
+    const corePercentage = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
 
-    let protocolScore = -1;
+    let protocolPercentage = 0;
+    
     if (weeklyProtocolGoals.length > 0) {
-      let totalGoalPercentages = 0;
-      
+      let totalProtocolTicks = 0;
+      let completedProtocolTicks = 0;
+  
       weeklyProtocolGoals.forEach((g: any) => {
-        if (g.completed || g.status === "completed") {
-          totalGoalPercentages += 100;
-        } else if (g.targetCount && g.targetCount > 0) {
-          const current = g.completedCount || 0;
-          totalGoalPercentages += (current / g.targetCount) * 100;
-        }
+        const target = g.targetCount && g.targetCount > 0 ? g.targetCount : 1;
+        const done = g.completedCount ?? (g.completed ? target : 0);
+        
+        totalProtocolTicks += target;
+        completedProtocolTicks += done;
       });
-
-      protocolScore = totalGoalPercentages / weeklyProtocolGoals.length;
+  
+      protocolPercentage = totalProtocolTicks > 0 
+        ? (completedProtocolTicks / totalProtocolTicks) * 100 
+        : 0;
     }
-
-    let overallPercentage = Math.round(habitScore);
-    if (protocolScore >= 0) {
-      overallPercentage = Math.round(habitScore * 0.7 + protocolScore * 0.3);
-    }
+  
+    const hasProtocols = weeklyProtocolGoals.length > 0;
+    const finalScore = hasProtocols 
+      ? (corePercentage * 0.90) + (protocolPercentage * 0.10)
+      : corePercentage;
+  
+    const overallPercentage = Math.round(finalScore);
 
     setSummaryData((prev) => ({
       isSunday,
@@ -451,10 +456,10 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                           <div className="flex items-center justify-between gap-2 mt-1">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                               currentStatus === "completed" 
-                                ? "bg-emerald-500/20 text-emerald-300" 
-                                : currentStatus === "failed" 
-                                ? "bg-rose-500/20 text-rose-300" 
-                                : "bg-amber-500/20 text-amber-300"
+                                ? "bg-emerald-500/25 text-emerald-300" 
+                                : currentStatus === "failed"
+                                ? "bg-rose-500/25 text-rose-300"
+                                : "bg-amber-500/25 text-amber-300"
                             }`}>
                               {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
                             </span>
@@ -466,42 +471,49 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                 </div>
               )}
 
-              <div className="rounded-lg border border-primary/30 bg-surface-2/60 p-3.5 space-y-2">
+              <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                    <Sparkles className="size-4" />
-                    <span>AI Coach Weekly Synthesis</span>
-                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Coach Synthesis</p>
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm" 
-                    className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
-                    onClick={() => void generateAiSummary()}
+                    className="h-7 text-[10px] gap-1"
+                    onClick={generateAiSummary}
                     disabled={loadingAi}
                   >
-                    {loadingAi ? <Loader2 className="size-3 animate-spin" /> : "Generate / Refresh"}
+                    {loadingAi ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                    {hasGenerated ? "Regenerate" : "Generate"}
                   </Button>
                 </div>
-                {loadingAi ? (
-                  <div className="flex items-center justify-center py-4 text-xs text-muted-foreground gap-2">
-                    <Loader2 className="size-4 animate-spin text-primary" />
-                    <span>Synthesizing journal notes and weight trend...</span>
-                  </div>
-                ) : hasGenerated ? (
-                  <FormattedSynthesis text={summaryData.aiSummary} />
-                ) : (
-                  <p className="text-xs text-muted-foreground italic py-2">
-                    {summaryData.aiSummary}
-                  </p>
-                )}
+                
+                <div className="rounded-lg border border-border bg-surface-2/60 p-4 min-h-24">
+                  {loadingAi ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-4 text-muted-foreground">
+                      <Loader2 className="size-5 animate-spin text-primary" />
+                      <p className="text-xs">Analyzing journals and adherence...</p>
+                    </div>
+                  ) : hasGenerated ? (
+                    <FormattedSynthesis text={summaryData.aiSummary} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4 italic">
+                      {summaryData.aiSummary}
+                    </p>
+                  )}
+                </div>
               </div>
 
+              {!summaryData.hasWeighedInToday && (
+                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400">
+                  ⚠️ You must log today's bodyweight on the dashboard before locking in the week.
+                </div>
+              )}
+
               <Button 
-                className="w-full" 
-                disabled={!summaryData.hasWeighedInToday} 
-                onClick={() => void handleLockInWeek()}
+                className="w-full font-bold mt-4" 
+                onClick={handleLockInWeek}
+                disabled={!summaryData.hasWeighedInToday}
               >
-                {summaryData.hasWeighedInToday ? "Lock In & Close Summary" : "Weekly Weight Needed First"}
+                {summaryData.isFinalised ? "Refinalise & Update Archive" : "Lock In Week & Archive"}
               </Button>
             </div>
           </DialogContent>

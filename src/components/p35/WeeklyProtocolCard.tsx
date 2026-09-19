@@ -30,8 +30,8 @@ export function isDateMonday(dateStr?: string) {
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
-  // FIXED: Changed "p35_active_date" to "p35_test_date" to respect the test panel
-  const activeDate = currentDate || localStorage.getItem("p35_test_date") || todayKey();
+  // Now automatically respects the test panel because todayKey() handles it
+  const activeDate = currentDate || todayKey();
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
   const isMonday = isDateMonday(activeDate);

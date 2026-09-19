@@ -61,7 +61,7 @@ export function MissionArchiveCard() {
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
+        <SheetTrigger asChild>
         <div className="panel flex items-center justify-between p-4 cursor-pointer hover:border-primary/50 transition-colors w-full">
           <div className="flex items-center gap-3">
             <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/20 text-primary">
@@ -72,8 +72,14 @@ export function MissionArchiveCard() {
               <p className="text-xs text-muted-foreground">Historical weekly reviews & protocols</p>
             </div>
           </div>
+          <div className="flex items-center shrink-0">
+            <Button variant="secondary" size="sm" className="pointer-events-none gap-1.5 h-8 text-xs">
+              <Archive className="size-3.5" /> View
+            </Button>
+          </div>
         </div>
       </SheetTrigger>
+
       
       <SheetContent side="bottom" className="flex h-[85vh] flex-col gap-0 p-0">
         <SheetHeader className="border-b border-border px-5 py-4 text-left">

@@ -47,7 +47,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
   const [newGoalText, setNewGoalText] = useState("");
   const [targetCount, setTargetCount] = useState<number>(0);
   const [expandedNotes, setExpandedNotes] = useState<string[]>([]);
-  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -310,39 +309,30 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   </div>
                 )}
 
-                {/* Dynamic Auto-Expanding Notes Input */}
+                {/* Always-Expanded Notes Input (when toggled on) */}
                 {expandedNotes.includes(goal.id) && (
                   <div className="mt-3 pl-6.5 animate-in slide-in-from-top-2 fade-in duration-200">
                     <textarea
                       rows={1}
                       placeholder={currentStatus === "failed" ? "Why did you miss this target?" : "Add context or details..."}
                       value={goal.notes || ""}
-                      onFocus={(e) => {
-                        setFocusedNoteId(goal.id);
-                        const el = e.target;
-                        // Execute in next event loop tick so Tailwind class is removed first
-                        setTimeout(() => {
+                      ref={(el) => {
+                        if (el) {
                           el.style.height = "auto";
                           el.style.height = `${el.scrollHeight}px`;
-                        }, 0);
-                      }}
-                      onBlur={(e) => {
-                        setFocusedNoteId(null);
-                        e.target.style.height = ""; // Strips inline height, letting Tailwind H-32 clamp it
-                        e.target.scrollTop = 0; // Snap the view back to the top line
+                        }
                       }}
                       onChange={(e) => {
                         updateNotes(goal.id, e.target.value);
-                        const el = e.target;
-                        el.style.height = "auto";
-                        el.style.height = `${el.scrollHeight}px`;
+                        e.target.style.height = "auto";
+                        e.target.style.height = `${e.target.scrollHeight}px`;
                       }}
                       onClick={(e) => e.stopPropagation()}
                       className={`w-full resize-none overflow-hidden bg-surface-2/40 border rounded px-2.5 py-1.5 text-[11px] placeholder:text-muted-foreground/50 focus:outline-none transition-colors leading-relaxed ${
                         currentStatus === "failed" 
                           ? "border-rose-500/20 text-rose-200 focus:border-rose-400/50 bg-rose-500/5" 
                           : "border-border text-foreground focus:border-primary/50"
-                      } ${focusedNoteId !== goal.id ? "h-[32px]" : ""}`}
+                      }`}
                     />
                   </div>
                 )}

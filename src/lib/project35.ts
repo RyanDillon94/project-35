@@ -7,7 +7,7 @@ export const DAILY_TARGETS = {
   caloriesMax: 2400,
   protein: 180,
   steps: 12500,
-  routine: "6:00 AM Iron → 7:00 AM Dog Walk",
+  routine: "6:00 AM Weekday Iron → 7:00 AM Dog Walk",
 };
 
 export const GOAL_WEIGHT = 190.0;

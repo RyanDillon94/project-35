@@ -369,6 +369,10 @@ export function countdownTo(target: Date, now = getCurrentDate()) {
 }
 
 export function todayKey(now = getCurrentDate()) {
+  if (typeof window !== "undefined") {
+    const testDate = localStorage.getItem("p35_test_date");
+    if (testDate) return testDate;
+  }
   return now.toISOString().slice(0, 10);
 }
 

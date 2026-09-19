@@ -30,7 +30,8 @@ export function isDateMonday(dateStr?: string) {
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
-  const activeDate = currentDate || localStorage.getItem("p35_active_date") || todayKey();
+  // FIXED: Changed "p35_active_date" to "p35_test_date" to respect the test panel
+  const activeDate = currentDate || localStorage.getItem("p35_test_date") || todayKey();
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
   const isMonday = isDateMonday(activeDate);
@@ -309,7 +310,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   </div>
                 )}
 
-                {/* Always-Expanded Notes Input (when toggled on) */}
                 {expandedNotes.includes(goal.id) && (
                   <div className="mt-3 pl-6.5 animate-in slide-in-from-top-2 fade-in duration-200">
                     <textarea

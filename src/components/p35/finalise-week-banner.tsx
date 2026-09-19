@@ -305,21 +305,21 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
       const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nRecent Bodyweight Log:\n${weightText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nLifting Sessions (Hevy):\n${hevyText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = `Review my completed week based on the performance data, bodyweight trend, protocol targets, journal notes, and workout logs.
+            const userPrompt = `Review my completed week based on the performance data, bodyweight trend, protocol targets, journal notes, and workout logs.
 
 You MUST structure your response EXACTLY with these four markdown headers and nothing else:
 
 **The Numbers**
-(Brief bulleted summary of scale weight changes, protocol status, and habit compliance metrics)
+(Provide a concise, hard-hitting coaching narrative on my scale weight, habit adherence, and protocol execution. Do not just blindly list the stats—interpret what my completion rates actually mean for my momentum and discipline.)
 
 **The Standard**
-(Your hard-hitting narrative on my execution, protocol notes, journal entries, and lifestyle discipline. Weave it together. If compliance is off, tell me to sort my shit out.)
+(Your uncompromising narrative on my execution and lifestyle discipline. Weave the journal entries in. Strictly enforce my goals if I am slacking. If I am missing the early alarm, negotiating with myself, or compliance is off, tell me to sort my shit out.)
 
 **The Iron**
-(Review my lifting sessions based on the provided Hevy logs. Call out consistency and sets. If no workouts are logged, call it out.)
+(Do not list every exercise like a receipt. Analyze progressive overload, volume, and consistency across the week based on the Hevy logs. Highlight one specific lift I need to push heavier on next week.)
 
 **Next Action**
-(A single, highly specific directive for tomorrow morning.)
+(A single, highly specific directive for tomorrow's execution.)
 
 Do NOT output any empty bullet points. Do NOT alter the headers.`;
 

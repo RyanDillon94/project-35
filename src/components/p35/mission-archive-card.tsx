@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Archive, Trophy, CheckCircle2, XCircle, BrainCircuit, Trash2 } from "lucide-react";
+import { getActiveBlockCountdown } from "@/lib/project35";
 
 type ArchivedWeek = {
   date: string;
@@ -42,7 +43,6 @@ export function MissionArchiveCard() {
       }
     }
     
-    // Sort reverse chronological (newest first)
     loaded.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setArchives(loaded);
   }, [isOpen]);
@@ -50,6 +50,15 @@ export function MissionArchiveCard() {
   const formatDate = (dateString: string) => {
     const d = new Date(dateString);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const getWeekRange = (dateString: string) => {
+    const end = new Date(dateString);
+    const start = new Date(end);
+    start.setDate(end.getDate() - 6);
+    
+    const formatStr = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return `${formatStr(start)} - ${formatStr(end)}`;
   };
 
   const deleteArchive = (dateKey: string) => {
@@ -61,7 +70,7 @@ export function MissionArchiveCard() {
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-                      <SheetTrigger asChild>
+      <SheetTrigger asChild>
         <div className="panel flex items-center justify-between p-4 cursor-pointer hover:border-primary/50 transition-colors w-full gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <Archive className="size-5 shrink-0 text-primary" />
@@ -78,7 +87,6 @@ export function MissionArchiveCard() {
         </div>
       </SheetTrigger>
 
-      
       <SheetContent side="bottom" className="flex h-[85vh] flex-col gap-0 p-0">
         <SheetHeader className="border-b border-border px-5 py-4 text-left">
           <div className="flex items-center gap-2">
@@ -101,21 +109,21 @@ export function MissionArchiveCard() {
           ) : (
             archives.map((archive) => {
               const hasValidSynthesis = archive.aiSynthesis && !archive.aiSynthesis.includes("Tap below to generate");
+              const targetDate = new Date(archive.date);
+              const block = getActiveBlockCountdown(targetDate);
+              
+              const phaseTitle = archive.phaseTitle || block.phaseTitle || "Project 35";
+              const blockName = archive.blockName || block.blockName || "Execution Phase";
+              const dateRange = archive.dateRange || getWeekRange(archive.date);
               
               return (
                 <div key={archive.date} className="rounded-xl border border-border bg-surface-2/40 p-4 space-y-4 relative group">
                   <div className="flex justify-between items-start border-b border-border/50 pb-3">
                     <div className="flex flex-col gap-0.5">
-                      {archive.phaseTitle ? (
-                        <>
-                          <span className="font-bold text-sm text-foreground">{archive.phaseTitle}</span>
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {archive.blockName} <span className="mx-1.5 opacity-40">•</span> <span className="opacity-80 font-normal">{archive.dateRange}</span>
-                          </span>
-                        </>
-                      ) : (
-                        <span className="font-bold text-sm text-foreground">Week of {formatDate(archive.date)}</span>
-                      )}
+                      <span className="font-bold text-sm text-foreground">{phaseTitle}</span>
+                      <span className="text-xs text-muted-foreground font-medium">
+                        {blockName} <span className="mx-1.5 opacity-40">•</span> <span className="opacity-80 font-normal">{dateRange}</span>
+                      </span>
                     </div>
                     
                     <div className="flex items-center gap-2">

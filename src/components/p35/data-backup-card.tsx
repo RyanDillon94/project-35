@@ -76,7 +76,7 @@ export function DataBackupCard() {
   };
 
   return (
-    <div className="flex items-center justify-between w-full rounded-lg border border-border bg-surface-2/60 p-3.5 gap-2">
+    <div className="panel flex items-center justify-between w-full p-4 gap-2">
       <input
         type="file"
         ref={fileInputRef}
@@ -88,28 +88,28 @@ export function DataBackupCard() {
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <Download className="size-5 shrink-0 text-primary" />
         <div className="min-w-0 w-full">
-          <p className="text-sm font-semibold truncate text-foreground">Local Storage & Backups</p>
+          <p className="text-sm font-bold truncate text-foreground">Local Storage & Backups</p>
           <p className="text-xs text-muted-foreground truncate w-full">Export or restore data</p>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={handleImportClick}
-          className="gap-1 px-2.5 text-xs"
+          className="gap-1.5 h-8 text-xs"
           title="Import Backup"
         >
           <Upload className="size-3.5" />
           <span>Import</span>
         </Button>
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={handleExport}
           disabled={exporting}
-          className="gap-1 px-2.5 text-xs"
+          className="gap-1.5 h-8 text-xs"
           title="Export Backup"
         >
           <Download className="size-3.5" />

@@ -30,8 +30,27 @@ export function isDateMonday(dateStr?: string) {
 const STORAGE_KEY_PREFIX = "p35_weekly_protocol_";
 
 export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
-  // Now automatically respects the test panel because todayKey() handles it
-  const activeDate = currentDate || todayKey();
+  // 1. Reactive state that forces test date to take absolute priority
+  const [activeDate, setActiveDate] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("p35_test_date") || currentDate || todayKey();
+    }
+    return currentDate || todayKey();
+  });
+
+  // 2. Lightweight polling so the card updates instantly when you click Test Panel buttons
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const testDate = localStorage.getItem("p35_test_date");
+      const resolvedDate = testDate || currentDate || new Date().toISOString().slice(0, 10);
+      
+      if (resolvedDate !== activeDate) {
+        setActiveDate(resolvedDate);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [activeDate, currentDate]);
+
   const mondayKey = getMondayKeyForDate(activeDate);
   const storageKey = `${STORAGE_KEY_PREFIX}${mondayKey}`;
   const isMonday = isDateMonday(activeDate);

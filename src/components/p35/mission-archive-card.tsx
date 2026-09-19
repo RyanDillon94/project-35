@@ -16,6 +16,8 @@ import {
   BrainCircuit,
   Trash2,
   ChevronDown,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { getActiveBlockCountdown } from "@/lib/project35";
 
@@ -34,6 +36,7 @@ export function MissionArchiveCard() {
   const [archives, setArchives] = useState<ArchivedWeek[]>([]);
   const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
   const [expandedAI, setExpandedAI] = useState<Record<string, boolean>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -62,10 +65,9 @@ export function MissionArchiveCard() {
     );
 
     setArchives(loaded);
-
-    // Start with all weeks collapsed when opening the archive.
     setExpandedWeeks({});
     setExpandedAI({});
+    setDeleteConfirm(null);
   }, [isOpen]);
 
   const formatDate = (dateString: string) => {
@@ -94,6 +96,8 @@ export function MissionArchiveCard() {
   };
 
   const toggleWeek = (date: string) => {
+    if (deleteConfirm === date) return;
+
     setExpandedWeeks((prev) => ({
       ...prev,
       [date]: !prev[date],
@@ -107,30 +111,50 @@ export function MissionArchiveCard() {
     }));
   };
 
-  const deleteArchive = (dateKey: string) => {
-    if (
-      confirm(
-        `Delete the archive for the week ending ${formatDate(dateKey)}?`
-      )
-    ) {
-      localStorage.removeItem(`p35_finalised_week_${dateKey}`);
+  // First stage of deletion:
+  // Show the in-card warning.
+  const startDelete = (date: string) => {
+    setDeleteConfirm(date);
+  };
 
-      setArchives((prev) =>
-        prev.filter((a) => a.date !== dateKey)
-      );
+  // Cancel the first-stage warning.
+  const cancelDelete = () => {
+    setDeleteConfirm(null);
+  };
 
-      setExpandedWeeks((prev) => {
-        const next = { ...prev };
-        delete next[dateKey];
-        return next;
-      });
+  // Second stage of deletion:
+  // Only after the user has already confirmed in the card,
+  // show the browser's native confirmation dialog.
+  const confirmDelete = (dateKey: string) => {
+    const confirmed = window.confirm(
+      `FINAL CONFIRMATION\n\nAre you absolutely sure you want to permanently delete the archive for the week ending ${formatDate(
+        dateKey
+      )}?\n\nThis cannot be undone.`
+    );
 
-      setExpandedAI((prev) => {
-        const next = { ...prev };
-        delete next[dateKey];
-        return next;
-      });
+    if (!confirmed) {
+      return;
     }
+
+    localStorage.removeItem(`p35_finalised_week_${dateKey}`);
+
+    setArchives((prev) =>
+      prev.filter((a) => a.date !== dateKey)
+    );
+
+    setExpandedWeeks((prev) => {
+      const next = { ...prev };
+      delete next[dateKey];
+      return next;
+    });
+
+    setExpandedAI((prev) => {
+      const next = { ...prev };
+      delete next[dateKey];
+      return next;
+    });
+
+    setDeleteConfirm(null);
   };
 
   return (
@@ -219,21 +243,33 @@ export function MissionArchiveCard() {
 
               const isExpanded = !!expandedWeeks[archive.date];
               const isAIExpanded = !!expandedAI[archive.date];
+              const isDeleting = deleteConfirm === archive.date;
 
               return (
                 <div
                   key={archive.date}
-                  className="rounded-xl border border-border bg-surface-2/40 overflow-hidden relative group"
+                  className={`rounded-xl border overflow-hidden relative group transition-colors ${
+                    isDeleting
+                      ? "border-rose-500/60 bg-rose-500/5"
+                      : "border-border bg-surface-2/40"
+                  }`}
                 >
                   {/* WEEK HEADER */}
-                  <button
-                    type="button"
-                    onClick={() => toggleWeek(archive.date)}
-                    className="w-full text-left px-4 py-3.5 hover:bg-surface-2/60 transition-colors"
+                  <div
+                    className={`px-4 py-3.5 transition-colors ${
+                      !isDeleting
+                        ? "hover:bg-surface-2/60"
+                        : ""
+                    }`}
                   >
-                    <div className="relative flex items-center justify-between gap-3">
-                      {/* Left side - title hierarchy */}
-                      <div className="min-w-0 flex-1 pr-10">
+                    <div className="flex items-center gap-3">
+                      {/* Title hierarchy */}
+                      <button
+                        type="button"
+                        onClick={() => toggleWeek(archive.date)}
+                        disabled={isDeleting}
+                        className="min-w-0 flex-1 text-left"
+                      >
                         <div className="flex flex-col">
                           <span className="font-bold text-sm leading-tight text-foreground truncate">
                             {phaseTitle}
@@ -247,53 +283,93 @@ export function MissionArchiveCard() {
                             {dateRange}
                           </span>
                         </div>
-                      </div>
+                      </button>
 
-                      {/* Score - centred vertically in header */}
-                      <div className="absolute left-1/2 -translate-x-1/2">
-                        <span
-                          className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                            archive.overallPercentage >= 80
-                              ? "bg-emerald-500/20 text-emerald-400"
-                              : archive.overallPercentage >= 50
-                              ? "bg-amber-500/20 text-amber-400"
-                              : "bg-rose-500/20 text-rose-400"
-                          }`}
-                        >
-                          {archive.overallPercentage}%
-                        </span>
-                      </div>
+                      {/* RIGHT SIDE */}
+                      {!isDeleting ? (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* SCORE */}
+                          <div
+                            className={`min-w-[52px] h-7 px-2 flex items-center justify-center rounded-full text-[11px] font-bold ${
+                              archive.overallPercentage >= 80
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : archive.overallPercentage >= 50
+                                ? "bg-amber-500/20 text-amber-400"
+                                : "bg-rose-500/20 text-rose-400"
+                            }`}
+                          >
+                            {archive.overallPercentage}%
+                          </div>
 
-                      {/* Right side controls */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <div
-                          className="size-7 flex items-center justify-center"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                          {/* DELETE */}
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="size-7 text-muted-foreground hover:text-rose-400"
+                            className="size-7 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10"
                             onClick={() =>
-                              deleteArchive(archive.date)
+                              startDelete(archive.date)
                             }
                             title="Delete Archive"
                           >
                             <Trash2 className="size-3.5" />
                           </Button>
-                        </div>
 
-                        <ChevronDown
-                          className={`size-4 text-muted-foreground transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        />
-                      </div>
+                          {/* EXPAND */}
+                          <button
+                            type="button"
+                            onClick={() => toggleWeek(archive.date)}
+                            className="size-7 flex items-center justify-center rounded-md hover:bg-surface-2 transition-colors"
+                            title={
+                              isExpanded
+                                ? "Collapse week"
+                                : "Expand week"
+                            }
+                          >
+                            <ChevronDown
+                              className={`size-4 text-muted-foreground transition-transform duration-200 ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ) : (
+                        /* FIRST DELETE CONFIRMATION */
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 text-rose-400 mr-1">
+                            <AlertTriangle className="size-4" />
+
+                            <span className="text-xs font-bold whitespace-nowrap">
+                              Are you sure?
+                            </span>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-3 text-xs font-bold bg-rose-500 text-white hover:bg-rose-600 hover:text-white"
+                            onClick={() =>
+                              confirmDelete(archive.date)
+                            }
+                          >
+                            Delete
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-muted-foreground hover:text-foreground"
+                            onClick={cancelDelete}
+                            title="Cancel"
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </button>
+                  </div>
 
                   {/* EXPANDED WEEK CONTENT */}
-                  {isExpanded && (
+                  {isExpanded && !isDeleting && (
                     <div className="border-t border-border/50 px-4 py-4 space-y-4">
                       {/* PROTOCOL EXECUTION */}
                       {archive.weeklyProtocolGoals?.length > 0 && (
@@ -355,7 +431,9 @@ export function MissionArchiveCard() {
                         <div className="border-t border-border/30 pt-3">
                           <button
                             type="button"
-                            onClick={() => toggleAI(archive.date)}
+                            onClick={() =>
+                              toggleAI(archive.date)
+                            }
                             className="w-full flex items-center justify-between gap-2 text-left hover:text-foreground transition-colors"
                           >
                             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
@@ -365,7 +443,9 @@ export function MissionArchiveCard() {
 
                             <ChevronDown
                               className={`size-3.5 text-muted-foreground transition-transform duration-200 ${
-                                isAIExpanded ? "rotate-180" : ""
+                                isAIExpanded
+                                  ? "rotate-180"
+                                  : ""
                               }`}
                             />
                           </button>

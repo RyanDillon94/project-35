@@ -65,7 +65,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     totalCompleted: number;
     overallPercentage: number;
     habitBreakdown: { label: string; completed: number; total: number }[];
-    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending"; targetCount?: number; completedCount?: number; failReason?: string }[];
+    weeklyProtocolGoals: { id: string; text: string; completed: boolean; status?: "completed" | "failed" | "pending"; targetCount?: number; completedCount?: number; notes?: string }[];
     weightHistory: { date: string; weight: number }[];
     journals: string[];
     aiSummary: string;
@@ -254,8 +254,8 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         ? summaryData.weeklyProtocolGoals
             .map((g) => {
               const countText = (g.targetCount && g.targetCount > 0) ? ` (${g.completedCount || 0}/${g.targetCount})` : "";
-              const failText = (g.status === "failed" && g.failReason) ? ` - Reason: ${g.failReason}` : "";
-              return `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}${countText}]${failText}`;
+              const notesText = g.notes ? ` - Notes/Reason: ${g.notes}` : "";
+              return `- "${g.text}" [Status: ${(g.status || (g.completed ? "completed" : "pending")).toUpperCase()}${countText}]${notesText}`;
             })
             .join("\n")
         : "No weekly execution focus targets logged.";
@@ -266,7 +266,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
       const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nRecent Bodyweight Log:\n${weightText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = "Review my completed week based on my performance data, recent bodyweight trend, weekly execution protocol targets, and journal notes. Seamlessly weave my weight progress and execution protocol targets (along with their Smashed/Failed/Pending status) into your standard narrative and verdict sections. Maintain a sharp, direct, conversational coaching tone blending physical adherence and lifestyle execution. If compliance or weight trend is off-track, tell me to sort my shit out.";
+      const userPrompt = "Review my completed week based on my performance data, recent bodyweight trend, weekly execution protocol targets, and journal notes. Seamlessly weave my weight progress and execution protocol targets (along with their Smashed/Failed/Pending status and any custom notes) into your standard narrative and verdict sections. Maintain a sharp, direct, conversational coaching tone blending physical adherence and lifestyle execution. If compliance or weight trend is off-track, tell me to sort my shit out.";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
@@ -439,14 +439,16 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
                       const total = g.targetCount || 0;
                       
                       return (
-                        <div key={g.id} className="flex flex-col gap-2 py-2 border-b border-border/40 last:border-0">
+                        <div key={g.id} className="flex flex-col gap-1 py-2 border-b border-border/40 last:border-0">
                           <span className={`text-xs font-medium ${currentStatus === "completed" ? "text-emerald-400" : currentStatus === "failed" ? "text-rose-400 line-through opacity-80" : "text-foreground"}`}>
                             {g.text}
                           </span>
-                          {g.failReason && currentStatus === "failed" && (
-                            <span className="text-[11px] text-rose-300/80 italic pl-1">Reason: {g.failReason}</span>
+                          {g.notes && (
+                            <span className={`text-[11px] italic pl-2 border-l-2 ${currentStatus === "failed" ? "border-rose-500/30 text-rose-300/80" : "border-primary/30 text-muted-foreground/80"}`}>
+                              {currentStatus === "failed" ? `Reason: ${g.notes}` : `Notes: ${g.notes}`}
+                            </span>
                           )}
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center justify-between gap-2 mt-1">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                               currentStatus === "completed" 
                                 ? "bg-emerald-500/20 text-emerald-300" 

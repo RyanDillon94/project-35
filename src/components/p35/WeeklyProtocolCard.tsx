@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Check, XCircle } from "lucide-react";
+import { Target, CheckCircle2, Plus, Trash2, Calendar, AlertCircle, Check, XCircle, MessageSquareText } from "lucide-react";
 import { toast } from "sonner";
 import { todayKey } from "@/lib/project35";
 
@@ -11,7 +11,7 @@ export type WeeklyProtocolGoal = {
   status?: "completed" | "failed" | "pending";
   targetCount?: number; // 0 = single check, 1-7 = multiple tickboxes
   completedCount?: number;
-  failReason?: string;
+  notes?: string; // Unified property for smashed details or failure reasons
 };
 
 export function getMondayKeyForDate(dateStr?: string) {
@@ -46,6 +46,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
 
   const [newGoalText, setNewGoalText] = useState("");
   const [targetCount, setTargetCount] = useState<number>(0);
+  const [expandedNotes, setExpandedNotes] = useState<string[]>([]); // Tracks open note accordions
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
         status: "pending",
         targetCount,
         completedCount: 0,
-        failReason: "",
+        notes: "",
       },
     ];
     setGoals(updated);
@@ -100,7 +101,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
     toast.success("Weekly protocol target locked in.");
   };
 
-  // Whole card / text toggle (marks all done or clears)
   const toggleGoal = (id: string) => {
     const updated = goals.map((g) => {
       if (g.id === id) {
@@ -131,26 +131,36 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
       return g;
     });
     setGoals(updated);
+    
+    // Auto-expand the notes box so the user can type their excuse
+    if (!expandedNotes.includes(id)) {
+      setExpandedNotes((prev) => [...prev, id]);
+    }
   };
 
-  const updateFailReason = (id: string, reason: string) => {
+  const toggleNotes = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedNotes((prev) => 
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const updateNotes = (id: string, notes: string) => {
     const updated = goals.map((g) => {
       if (g.id === id) {
-        return { ...g, failReason: reason };
+        return { ...g, notes };
       }
       return g;
     });
     setGoals(updated);
   };
 
-  // Sub-tickbox tap handler (index 0 to targetCount - 1)
   const handleSubCheck = (id: string, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = goals.map((g) => {
       if (g.id === id) {
         const total = g.targetCount ?? 0;
         const current = g.completedCount ?? (g.completed ? total || 1 : 0);
-        // If clicking the current head box, step down by one; otherwise set to clicked box count
         const nextCount = index + 1 === current ? index : index + 1;
         const isDone = total > 0 ? nextCount >= total : nextCount > 0;
         return {
@@ -238,6 +248,17 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                     }`}>
                       {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
                     </span>
+
+                    {/* Notes Toggle Button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`size-7 shrink-0 ${expandedNotes.includes(goal.id) || goal.notes ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+                      onClick={(e) => toggleNotes(goal.id, e)}
+                      title="Add Notes"
+                    >
+                      <MessageSquareText className="size-3.5" />
+                    </Button>
                     
                     {currentStatus === "pending" && (
                       <Button
@@ -291,16 +312,20 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   </div>
                 )}
 
-                {/* Fail Reason Input */}
-                {currentStatus === "failed" && (
-                  <div className="mt-3 pl-6.5">
+                {/* Dynamic Notes Input */}
+                {expandedNotes.includes(goal.id) && (
+                  <div className="mt-3 pl-6.5 animate-in slide-in-from-top-2 fade-in duration-200">
                     <input
                       type="text"
-                      placeholder="Why did you miss this target?"
-                      value={goal.failReason || ""}
-                      onChange={(e) => updateFailReason(goal.id, e.target.value)}
+                      placeholder={currentStatus === "failed" ? "Why did you miss this target?" : "Add context or details..."}
+                      value={goal.notes || ""}
+                      onChange={(e) => updateNotes(goal.id, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full bg-rose-500/5 border border-rose-500/20 rounded px-2.5 py-1.5 text-[11px] text-rose-200 placeholder:text-rose-400/40 focus:outline-none focus:border-rose-400/50 transition-colors"
+                      className={`w-full bg-surface-2/40 border rounded px-2.5 py-1.5 text-[11px] placeholder:text-muted-foreground/50 focus:outline-none transition-colors ${
+                        currentStatus === "failed" 
+                          ? "border-rose-500/20 text-rose-200 focus:border-rose-400/50 bg-rose-500/5" 
+                          : "border-border text-foreground focus:border-primary/50"
+                      }`}
                     />
                   </div>
                 )}

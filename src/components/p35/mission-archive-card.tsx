@@ -7,10 +7,14 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Archive, Trophy, CheckCircle2, XCircle, BrainCircuit } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Archive, Trophy, CheckCircle2, XCircle, BrainCircuit, Trash2 } from "lucide-react";
 
 type ArchivedWeek = {
   date: string;
+  dateRange?: string;
+  phaseTitle?: string;
+  blockName?: string;
   overallPercentage: number;
   weeklyProtocolGoals: any[];
   aiSynthesis: string;
@@ -46,6 +50,13 @@ export function MissionArchiveCard() {
   const formatDate = (dateString: string) => {
     const d = new Date(dateString);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  };
+
+  const deleteArchive = (dateKey: string) => {
+    if (confirm(`Delete the archive for the week ending ${formatDate(dateKey)}?`)) {
+      localStorage.removeItem(`p35_finalised_week_${dateKey}`);
+      setArchives((prev) => prev.filter((a) => a.date !== dateKey));
+    }
   };
 
   return (
@@ -84,66 +95,93 @@ export function MissionArchiveCard() {
               </p>
             </div>
           ) : (
-            archives.map((archive) => (
-              <div key={archive.date} className="rounded-xl border border-border bg-surface-2/40 p-4 space-y-4">
-                <div className="flex justify-between items-center border-b border-border/50 pb-3">
-                  <span className="font-bold text-sm text-foreground">Week of {formatDate(archive.date)}</span>
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                    archive.overallPercentage >= 80 
-                      ? "bg-emerald-500/20 text-emerald-400" 
-                      : archive.overallPercentage >= 50
-                      ? "bg-amber-500/20 text-amber-400"
-                      : "bg-rose-500/20 text-rose-400"
-                  }`}>
-                    {archive.overallPercentage}% Score
-                  </span>
-                </div>
+            archives.map((archive) => {
+              const hasValidSynthesis = archive.aiSynthesis && !archive.aiSynthesis.includes("Tap below to generate");
+              
+              return (
+                <div key={archive.date} className="rounded-xl border border-border bg-surface-2/40 p-4 space-y-4 relative group">
+                  <div className="flex justify-between items-start border-b border-border/50 pb-3">
+                    <div className="flex flex-col gap-0.5">
+                      {archive.phaseTitle ? (
+                        <>
+                          <span className="font-bold text-sm text-foreground">{archive.phaseTitle}</span>
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {archive.blockName} <span className="mx-1.5 opacity-40">•</span> <span className="opacity-80 font-normal">{archive.dateRange}</span>
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-bold text-sm text-foreground">Week of {formatDate(archive.date)}</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                        archive.overallPercentage >= 80 
+                          ? "bg-emerald-500/20 text-emerald-400" 
+                          : archive.overallPercentage >= 50
+                          ? "bg-amber-500/20 text-amber-400"
+                          : "bg-rose-500/20 text-rose-400"
+                      }`}>
+                        {archive.overallPercentage}% Score
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-muted-foreground hover:text-rose-400 shrink-0"
+                        onClick={() => deleteArchive(archive.date)}
+                        title="Delete Archive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
 
-                {archive.weeklyProtocolGoals?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-                      Protocol Execution
-                    </p>
-                    <div className="space-y-1.5">
-                      {archive.weeklyProtocolGoals.map((g) => {
-                        const isDone = g.completed || g.status === 'completed';
-                        const countText = g.targetCount && g.targetCount > 0 ? ` (${g.completedCount || 0}/${g.targetCount})` : "";
-                        return (
-                          <div key={g.id} className="flex items-start gap-2.5 text-xs">
-                            {isDone ? (
-                              <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
-                            ) : (
-                              <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
-                            )}
-                            <div className="flex flex-col gap-0.5">
-                              <span className={`font-medium ${isDone ? "text-foreground" : "text-muted-foreground line-through opacity-80"}`}>
-                                {g.text} {countText}
-                              </span>
-                              {g.notes && (
-                                <span className="text-[10px] italic text-muted-foreground/70">
-                                  {g.notes}
-                                </span>
+                  {archive.weeklyProtocolGoals?.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                        Protocol Execution
+                      </p>
+                      <div className="space-y-1.5">
+                        {archive.weeklyProtocolGoals.map((g) => {
+                          const isDone = g.completed || g.status === 'completed';
+                          const countText = g.targetCount && g.targetCount > 0 ? ` (${g.completedCount || 0}/${g.targetCount})` : "";
+                          return (
+                            <div key={g.id} className="flex items-start gap-2.5 text-xs">
+                              {isDone ? (
+                                <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                              ) : (
+                                <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
                               )}
+                              <div className="flex flex-col gap-0.5">
+                                <span className={`font-medium ${isDone ? "text-foreground" : "text-muted-foreground line-through opacity-80"}`}>
+                                  {g.text} {countText}
+                                </span>
+                                {g.notes && (
+                                  <span className="text-[10px] italic text-muted-foreground/70">
+                                    {g.notes}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {archive.aiSynthesis && (
-                  <div className="space-y-2 pt-1 border-t border-border/30">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5 pt-2">
-                      <BrainCircuit className="size-3.5 text-primary"/> AI Coach Synthesis
-                    </p>
-                    <div className="text-xs italic text-muted-foreground bg-surface-2/60 p-3 rounded-lg border border-border/50 leading-relaxed whitespace-pre-wrap">
-                      {archive.aiSynthesis}
+                  {hasValidSynthesis && (
+                    <div className="space-y-2 pt-1 border-t border-border/30">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5 pt-2">
+                        <BrainCircuit className="size-3.5 text-primary"/> AI Coach Synthesis
+                      </p>
+                      <div className="text-xs italic text-muted-foreground bg-surface-2/60 p-3 rounded-lg border border-border/50 leading-relaxed whitespace-pre-wrap">
+                        {archive.aiSynthesis}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </SheetContent>

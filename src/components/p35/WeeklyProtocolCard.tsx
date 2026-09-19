@@ -9,9 +9,9 @@ export type WeeklyProtocolGoal = {
   text: string;
   completed: boolean;
   status?: "completed" | "failed" | "pending";
-  targetCount?: number; // 0 = single check, 1-7 = multiple tickboxes
+  targetCount?: number; 
   completedCount?: number;
-  notes?: string; // Unified property for smashed details or failure reasons
+  notes?: string; 
 };
 
 export function getMondayKeyForDate(dateStr?: string) {
@@ -46,7 +46,8 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
 
   const [newGoalText, setNewGoalText] = useState("");
   const [targetCount, setTargetCount] = useState<number>(0);
-  const [expandedNotes, setExpandedNotes] = useState<string[]>([]); // Tracks open note accordions
+  const [expandedNotes, setExpandedNotes] = useState<string[]>([]);
+  const [focusedNoteId, setFocusedNoteId] = useState<string | null>(null); // Tracks the currently active text box
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -132,7 +133,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
     });
     setGoals(updated);
     
-    // Auto-expand the notes box so the user can type their excuse
     if (!expandedNotes.includes(id)) {
       setExpandedNotes((prev) => [...prev, id]);
     }
@@ -249,7 +249,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                       {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
                     </span>
 
-                    {/* Notes Toggle Button */}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -286,7 +285,6 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   </div>
                 </div>
 
-                {/* Render Tickboxes */}
                 {total > 0 && (
                   <div className="mt-2.5 flex items-center gap-1.5 pl-6.5">
                     {Array.from({ length: total }).map((_, idx) => {
@@ -312,16 +310,30 @@ export function WeeklyProtocolCard({ currentDate }: { currentDate?: string }) {
                   </div>
                 )}
 
-                {/* Dynamic Notes Input */}
+                {/* Auto-expanding notes field */}
                 {expandedNotes.includes(goal.id) && (
                   <div className="mt-3 pl-6.5 animate-in slide-in-from-top-2 fade-in duration-200">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={1}
                       placeholder={currentStatus === "failed" ? "Why did you miss this target?" : "Add context or details..."}
                       value={goal.notes || ""}
-                      onChange={(e) => updateNotes(goal.id, e.target.value)}
+                      onFocus={(e) => {
+                        setFocusedNoteId(goal.id);
+                        e.target.style.height = "auto";
+                        e.target.style.height = `${e.target.scrollHeight}px`;
+                      }}
+                      onBlur={(e) => {
+                        setFocusedNoteId(null);
+                        e.target.scrollTop = 0; // Snap text back to the beginning
+                      }}
+                      onChange={(e) => {
+                        updateNotes(goal.id, e.target.value);
+                        e.target.style.height = "auto";
+                        e.target.style.height = `${e.target.scrollHeight}px`;
+                      }}
                       onClick={(e) => e.stopPropagation()}
-                      className={`w-full bg-surface-2/40 border rounded px-2.5 py-1.5 text-[11px] placeholder:text-muted-foreground/50 focus:outline-none transition-colors ${
+                      style={{ height: focusedNoteId === goal.id ? undefined : "32px" }}
+                      className={`w-full resize-none overflow-hidden bg-surface-2/40 border rounded px-2.5 py-1.5 text-[11px] placeholder:text-muted-foreground/50 focus:outline-none transition-colors leading-relaxed ${
                         currentStatus === "failed" 
                           ? "border-rose-500/20 text-rose-200 focus:border-rose-400/50 bg-rose-500/5" 
                           : "border-border text-foreground focus:border-primary/50"

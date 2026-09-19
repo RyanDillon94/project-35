@@ -161,14 +161,14 @@ export function MissionArchiveCard() {
                   {/* Collapsible Header */}
                   <div 
                     onClick={() => toggleWeekOpen(week.date)}
-                    className="p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-surface-2/80 transition-colors"
+                    className="p-4 flex items-center justify-between gap-2 cursor-pointer hover:bg-surface-2/80 transition-colors"
                   >
-                    {/* Strict Truncation Container to stop text overlap */}
-                    <div className="min-w-0 flex-1 space-y-1 pr-2">
-                      <p className="text-sm font-bold text-foreground truncate block w-full">
+                    {/* Hard Max-Width Boundary to prevent text bleed */}
+                    <div className="max-w-[calc(100%-6.5rem)] space-y-1">
+                      <p className="text-sm font-bold text-foreground truncate w-full">
                         {week.phaseTitle}
                       </p>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 truncate block w-full">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 truncate w-full">
                         <Calendar className="size-3 text-primary shrink-0" />
                         <span className="truncate">{week.blockName}</span>
                         <span className="text-border shrink-0">•</span>
@@ -176,11 +176,11 @@ export function MissionArchiveCard() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      {/* Perfectly Centered Score Badge */}
-                      <div className="flex flex-col items-center justify-center size-12 rounded-lg bg-surface-2 border border-border shadow-inner shrink-0">
-                        <span className="text-[9px] text-muted-foreground uppercase leading-none font-bold tracking-wider">Score</span>
-                        <span className="text-sm font-extrabold text-primary leading-tight mt-0.5">{week.overallPercentage}%</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Score Badge */}
+                      <div className="flex flex-col items-center justify-center size-11 rounded-lg bg-surface-2 border border-border shadow-inner shrink-0">
+                        <span className="text-[8px] text-muted-foreground uppercase leading-none font-bold tracking-wider">Score</span>
+                        <span className="text-xs font-extrabold text-primary leading-tight mt-0.5">{week.overallPercentage}%</span>
                       </div>
 
                       <Button

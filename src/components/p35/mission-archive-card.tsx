@@ -8,14 +8,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Archive, Trash2, CheckCircle2, Sparkles, ChevronDown, ChevronUp, Calendar } from "lucide-react";
+import { Archive, Trash2, Sparkles, ChevronDown, ChevronUp, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
 export function MissionArchiveCard() {
   const [open, setOpen] = useState(false);
   const [archivedWeeks, setArchivedWeeks] = useState<any[]>([]);
   
-  // Track open states for accordions: { [weekDateKey]: { weekOpen: boolean, aiOpen: boolean } }
   const [states, setStates] = useState<Record<string, { weekOpen: boolean; aiOpen: boolean }>>({});
 
   const loadArchive = () => {
@@ -35,7 +34,6 @@ export function MissionArchiveCard() {
         }
       }
 
-      // Sort descending by date (newest first)
       weeks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setArchivedWeeks(weeks);
       setStates((prev) => ({ ...defaultStates, ...prev }));
@@ -165,36 +163,37 @@ export function MissionArchiveCard() {
                     onClick={() => toggleWeekOpen(week.date)}
                     className="p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-surface-2/80 transition-colors"
                   >
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <p className="text-sm font-bold text-foreground truncate block">
+                    {/* Strict Truncation Container to stop text overlap */}
+                    <div className="min-w-0 flex-1 space-y-1 pr-2">
+                      <p className="text-sm font-bold text-foreground truncate block w-full">
                         {week.phaseTitle}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate block flex items-center gap-1.5">
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 truncate block w-full">
                         <Calendar className="size-3 text-primary shrink-0" />
-                        <span>{week.blockName}</span>
-                        <span className="text-border">•</span>
-                        <span>{week.dateRange}</span>
-                      </p>
+                        <span className="truncate">{week.blockName}</span>
+                        <span className="text-border shrink-0">•</span>
+                        <span className="shrink-0">{week.dateRange}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      {/* Centered Score Badge */}
-                      <div className="flex flex-col items-center justify-center size-12 rounded-lg bg-surface-2 border border-border shadow-inner">
-                        <span className="text-[10px] text-muted-foreground uppercase leading-none font-semibold">Score</span>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      {/* Perfectly Centered Score Badge */}
+                      <div className="flex flex-col items-center justify-center size-12 rounded-lg bg-surface-2 border border-border shadow-inner shrink-0">
+                        <span className="text-[9px] text-muted-foreground uppercase leading-none font-bold tracking-wider">Score</span>
                         <span className="text-sm font-extrabold text-primary leading-tight mt-0.5">{week.overallPercentage}%</span>
                       </div>
 
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-8 text-muted-foreground hover:text-rose-400"
+                        className="size-8 text-muted-foreground hover:text-rose-400 shrink-0"
                         onClick={(e) => deleteWeek(week.date, e)}
                         title="Delete archive entry"
                       >
                         <Trash2 className="size-4" />
                       </Button>
 
-                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground">
+                      <Button variant="ghost" size="icon" className="size-8 text-muted-foreground shrink-0 pointer-events-none">
                         {state.weekOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                       </Button>
                     </div>
@@ -256,7 +255,7 @@ export function MissionArchiveCard() {
                               <Sparkles className="size-4 text-primary" />
                               <span className="text-xs font-semibold text-foreground">AI Coach Synthesis Debrief</span>
                             </div>
-                            <Button variant="ghost" size="icon" className="size-6 text-muted-foreground">
+                            <Button variant="ghost" size="icon" className="size-6 text-muted-foreground pointer-events-none">
                               {state.aiOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                             </Button>
                           </div>

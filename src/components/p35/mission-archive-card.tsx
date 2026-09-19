@@ -34,8 +34,22 @@ type ArchivedWeek = {
 export function MissionArchiveCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [archives, setArchives] = useState<ArchivedWeek[]>([]);
-  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
+
+  // Controls whether each individual week is expanded.
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>(
+    {}
+  );
+
+  // Controls whether each week's AI synthesis is expanded.
   const [expandedAI, setExpandedAI] = useState<Record<string, boolean>>({});
+
+  // Controls whether individual protocol-goal notes are expanded.
+  // The key is `${weekDate}-${goalId}` so notes remain independent.
+  const [expandedNotes, setExpandedNotes] = useState<
+    Record<string, boolean>
+  >({});
+
+  // Controls the first stage of the two-step delete confirmation.
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,8 +79,11 @@ export function MissionArchiveCard() {
     );
 
     setArchives(loaded);
+
+    // Start with everything collapsed when the archive is opened.
     setExpandedWeeks({});
     setExpandedAI({});
+    setExpandedNotes({});
     setDeleteConfirm(null);
   }, [isOpen]);
 
@@ -96,6 +113,8 @@ export function MissionArchiveCard() {
   };
 
   const toggleWeek = (date: string) => {
+    // Don't allow the week to be expanded while deletion confirmation
+    // is active.
     if (deleteConfirm === date) return;
 
     setExpandedWeeks((prev) => ({
@@ -111,8 +130,17 @@ export function MissionArchiveCard() {
     }));
   };
 
+  const toggleNote = (weekDate: string, goalId: string | number) => {
+    const noteKey = `${weekDate}-${goalId}`;
+
+    setExpandedNotes((prev) => ({
+      ...prev,
+      [noteKey]: !prev[noteKey],
+    }));
+  };
+
   // First stage of deletion:
-  // Show the in-card warning.
+  // Show the warning directly inside the card.
   const startDelete = (date: string) => {
     setDeleteConfirm(date);
   };
@@ -123,8 +151,7 @@ export function MissionArchiveCard() {
   };
 
   // Second stage of deletion:
-  // Only after the user has already confirmed in the card,
-  // show the browser's native confirmation dialog.
+  // Show the browser's native confirmation dialog.
   const confirmDelete = (dateKey: string) => {
     const confirmed = window.confirm(
       `FINAL CONFIRMATION\n\nAre you absolutely sure you want to permanently delete the archive for the week ending ${formatDate(
@@ -151,6 +178,18 @@ export function MissionArchiveCard() {
     setExpandedAI((prev) => {
       const next = { ...prev };
       delete next[dateKey];
+      return next;
+    });
+
+    setExpandedNotes((prev) => {
+      const next = { ...prev };
+
+      Object.keys(next).forEach((key) => {
+        if (key.startsWith(`${dateKey}-`)) {
+          delete next[key];
+        }
+      });
+
       return next;
     });
 
@@ -263,7 +302,7 @@ export function MissionArchiveCard() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      {/* Title hierarchy */}
+                      {/* TITLE / WEEK DETAILS */}
                       <button
                         type="button"
                         onClick={() => toggleWeek(archive.date)}
@@ -314,7 +353,7 @@ export function MissionArchiveCard() {
                             <Trash2 className="size-3.5" />
                           </Button>
 
-                          {/* EXPAND */}
+                          {/* EXPAND WEEK */}
                           <button
                             type="button"
                             onClick={() => toggleWeek(archive.date)}
@@ -390,33 +429,73 @@ export function MissionArchiveCard() {
                                   ? ` (${g.completedCount || 0}/${g.targetCount})`
                                   : "";
 
+                              const hasNotes =
+                                !!g.notes &&
+                                g.notes.trim().length > 0;
+
+                              const noteKey = `${archive.date}-${g.id}`;
+                              const isNoteExpanded =
+                                !!expandedNotes[noteKey];
+
                               return (
                                 <div
                                   key={g.id}
                                   className="flex items-start gap-2.5 text-xs"
                                 >
+                                  {/* STATUS ICON */}
                                   {isDone ? (
                                     <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
                                   ) : (
                                     <XCircle className="size-4 text-rose-500 shrink-0 mt-0.5" />
                                   )}
 
-                                  <div className="flex flex-col gap-0.5 min-w-0">
-                                    <span
-                                      className={`font-medium ${
-                                        isDone
-                                          ? "text-foreground"
-                                          : "text-muted-foreground line-through opacity-80"
-                                      }`}
-                                    >
-                                      {g.text}
-                                      {countText}
-                                    </span>
-
-                                    {g.notes && (
-                                      <span className="text-[10px] italic text-muted-foreground/70">
-                                        {g.notes}
+                                  {/* GOAL + NOTE */}
+                                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                                    <div className="flex items-start gap-1.5">
+                                      <span
+                                        className={`font-medium flex-1 ${
+                                          isDone
+                                            ? "text-foreground"
+                                            : "text-muted-foreground line-through opacity-80"
+                                        }`}
+                                      >
+                                        {g.text}
+                                        {countText}
                                       </span>
+
+                                      {/* NOTE TOGGLE */}
+                                      {hasNotes && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            toggleNote(
+                                              archive.date,
+                                              g.id
+                                            )
+                                          }
+                                          className="size-5 shrink-0 flex items-center justify-center rounded hover:bg-surface-2 transition-colors text-muted-foreground"
+                                          title={
+                                            isNoteExpanded
+                                              ? "Hide note"
+                                              : "Show note"
+                                          }
+                                        >
+                                          <ChevronDown
+                                            className={`size-3.5 transition-transform duration-200 ${
+                                              isNoteExpanded
+                                                ? "rotate-180"
+                                                : ""
+                                            }`}
+                                          />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* COLLAPSIBLE NOTE */}
+                                    {hasNotes && isNoteExpanded && (
+                                      <div className="mt-1 mr-1 text-[10px] italic text-muted-foreground/70 bg-surface-2/40 border border-border/40 rounded-md px-2.5 py-2 leading-relaxed">
+                                        {g.notes}
+                                      </div>
                                     )}
                                   </div>
                                 </div>

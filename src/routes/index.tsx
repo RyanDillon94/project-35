@@ -60,22 +60,30 @@ function Dashboard({ userId }: { userId: string }) {
   // Track the currently viewed date from local storage/navigator
   const [currentDate, setCurrentDate] = useState(() => localStorage.getItem("p35_active_date") || todayKey());
 
-  // 1. Bulletproof Midnight Checker: Aggressively checks the clock to force a reload if the day changes
+  // 1. Boot Sequence & Midnight Rollover
   useEffect(() => {
-    const mountDate = todayKey();
+    // Every time the app is freshly opened, snap directly to today's date.
+    // This stops the navigator from getting stuck on historical dates.
+    const initialToday = todayKey();
+    localStorage.setItem("p35_active_date", initialToday);
+    setCurrentDate(initialToday);
     
+    // Broadcast the snap to all components (NonNegotiables, etc.)
+    window.dispatchEvent(new Event("p35-date-changed"));
+
+    // Watch the system clock for midnight rollovers if left open in the background
     const checkMidnight = setInterval(() => {
-      const realToday = todayKey();
-      if (realToday !== mountDate) {
-        localStorage.removeItem("p35_active_date");
-        window.location.reload();
+      const currentSystemDate = todayKey();
+      if (currentSystemDate !== initialToday) {
+        localStorage.setItem("p35_active_date", currentSystemDate);
+        window.location.reload(); 
       }
-    }, 5000); // Checks the system clock every 5 seconds
-    
+    }, 5000);
+
     return () => clearInterval(checkMidnight);
   }, []);
 
-  // 2. Existing Hook: State and event tracking for date/finalise changes
+  // 2. Syncing state when you actively click the arrows in the navigator
   useEffect(() => {
     const updateDateAndStatus = () => {
       const active = localStorage.getItem("p35_active_date") || todayKey();
@@ -91,6 +99,7 @@ function Dashboard({ userId }: { userId: string }) {
     window.addEventListener("storage", updateDateAndStatus);
     window.addEventListener("p35-date-changed", updateDateAndStatus as EventListener);
     
+    // Fast polling to keep the UI perfectly synced with the date navigator
     const interval = setInterval(updateDateAndStatus, 300);
 
     return () => {

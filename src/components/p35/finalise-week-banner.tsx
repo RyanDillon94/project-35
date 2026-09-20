@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+Import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
@@ -239,7 +239,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     }
   
     const hasProtocols = weeklyProtocolGoals.length > 0;
-    // 90% Habits / 10% Protocols weight applied here
     const finalScore = hasProtocols 
       ? (corePercentage * 0.90) + (protocolPercentage * 0.10)
       : corePercentage;
@@ -306,7 +305,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
       const contextBundle = `Weekly Adherence: ${summaryData.overallPercentage}% (${summaryData.totalCompleted}/${summaryData.totalPossible} total checks).\nHabit Breakdown:\n${breakdownText}\n\nRecent Bodyweight Log:\n${weightText}\n\nWeekly Execution Protocol Targets:\n${protocolText}\n\nLifting Sessions (Hevy):\n${hevyText}\n\nDaily Journal Notes:\n${journalText}`;
       
-      const userPrompt = `Review my completed week based on the performance data, bodyweight trend, protocol targets, journal notes, and workout logs.
+            const userPrompt = `Review my completed week based on the performance data, bodyweight trend, protocol targets, journal notes, and workout logs.
 
 You MUST structure your response EXACTLY with these four markdown headers and nothing else:
 
@@ -474,112 +473,100 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
               </div>
 
               <div className="space-y-2">
-                <p className="stat-label uppercase tracking-wider text-muted-foreground/80 mb-2">Non-Negotiables Breakdown</p>
-                {summaryData.habitBreakdown.map((stat, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-md border border-border/50 bg-surface-2/30 px-3 py-2 text-sm">
-                    <span className="text-foreground/90">{stat.label}</span>
-                    <span className={`font-semibold ${stat.completed === stat.total ? "text-emerald-400" : stat.completed === 0 ? "text-rose-400" : "text-primary"}`}>
-                      {stat.completed}/{stat.total}
-                    </span>
-                  </div>
-                ))}
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Non-Negotiables Breakdown</p>
+                <div className="space-y-1.5 rounded-lg border border-border bg-surface-2/40 p-3">
+                  {summaryData.habitBreakdown.map((h, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
+                      <span className="text-foreground font-medium">{h.label}</span>
+                      <span className="font-semibold text-primary">{h.completed}/{h.total}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {summaryData.weeklyProtocolGoals.length > 0 && (
-                <div className="space-y-2 mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="stat-label uppercase tracking-wider text-muted-foreground/80">Weekly Execution Protocol</p>
-                    <p className="text-[10px] text-muted-foreground italic">Check dashboard to amend</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weekly Execution Protocol</p>
+                    <span className="text-[10px] text-muted-foreground italic">Check dashboard to amend</span>
                   </div>
-                  {summaryData.weeklyProtocolGoals.map((g) => {
-                    const isFailed = g.status === "failed";
-                    const isComplete = g.status === "completed" || g.completed;
-                    
-                    let statusLabel = "Pending";
-                    let statusColor = "bg-primary/20 text-primary";
-                    
-                    if (isFailed) {
-                      statusLabel = "Failed";
-                      statusColor = "bg-rose-500/20 text-rose-400";
-                    } else if (isComplete) {
-                      statusLabel = "Smashed";
-                      statusColor = "bg-emerald-500/20 text-emerald-400";
-                    }
-                    
-                    return (
-                      <div key={g.id} className="rounded-md border border-border/50 bg-surface-2/30 px-3 py-3 text-sm space-y-2">
-                        <p className={`font-medium ${isFailed ? "text-rose-400/80 line-through" : isComplete ? "text-emerald-400/80" : "text-foreground"}`}>
-                          {g.text}
-                          {g.targetCount && g.targetCount > 0 && (
-                            <span className="ml-2 text-xs text-muted-foreground opacity-80 font-normal">
-                              ({g.completedCount || 0}/{g.targetCount})
+                  <div className="space-y-2 rounded-lg border border-border bg-surface-2/40 p-3">
+                    {summaryData.weeklyProtocolGoals.map((g) => {
+                      const currentStatus = g.status || (g.completed ? "completed" : "pending");
+                      const current = g.completedCount || 0;
+                      const total = g.targetCount || 0;
+                      
+                      return (
+                        <div key={g.id} className="flex flex-col gap-1 py-2 border-b border-border/40 last:border-0">
+                          <span className={`text-xs font-medium ${currentStatus === "completed" ? "text-emerald-400" : currentStatus === "failed" ? "text-rose-400 line-through opacity-80" : "text-foreground"}`}>
+                            {g.text}
+                          </span>
+                          {g.notes && (
+                            <span className={`text-[11px] italic pl-2 border-l-2 ${currentStatus === "failed" ? "border-rose-500/30 text-rose-300/80" : "border-primary/30 text-muted-foreground/80"}`}>
+                              {currentStatus === "failed" ? `Reason: ${g.notes}` : `Notes: ${g.notes}`}
                             </span>
                           )}
-                        </p>
-                        {g.notes && (
-                          <p className="text-xs text-muted-foreground italic leading-relaxed pl-2 border-l-2 border-border/50">
-                            {g.notes}
-                          </p>
-                        )}
-                        <div>
-                          <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
-                            {statusLabel}
-                          </span>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              currentStatus === "completed" 
+                                ? "bg-emerald-500/25 text-emerald-300" 
+                                : currentStatus === "failed"
+                                ? "bg-rose-500/25 text-rose-300"
+                                : "bg-amber-500/25 text-amber-300"
+                            }`}>
+                              {currentStatus === "completed" ? "Smashed" : currentStatus === "failed" ? "Failed" : total > 0 ? `${current}/${total}` : "Pending"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
-              <div className="rounded-lg border border-border bg-surface-2/60 p-4 space-y-3">
+              <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-primary flex items-center gap-2">
-                    <Sparkles className="size-4" />
-                    AI Weekly Journal Synthesis
-                  </p>
-                  {summaryData.aiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict." && (
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-7 text-xs text-muted-foreground hover:text-primary gap-1"
-                      onClick={generateAiSummary}
-                      disabled={loadingAi}
-                    >
-                      {loadingAi ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-                      Regenerate
-                    </Button>
-                  )}
-                </div>
-
-                {summaryData.aiSummary === "Tap below to generate your AI weekly journal synthesis and performance verdict." ? (
-                  <Button
-                    variant="secondary"
-                    className="w-full gap-2 text-primary"
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Coach Synthesis</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-[10px] gap-1"
                     onClick={generateAiSummary}
                     disabled={loadingAi}
                   >
-                    {loadingAi ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                    {loadingAi ? "Analyzing week..." : "Generate AI Verdict"}
+                    {loadingAi ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                    {hasGenerated ? "Regenerate" : "Generate"}
                   </Button>
-                ) : (
-                  <FormattedSynthesis text={summaryData.aiSummary} />
-                )}
+                </div>
+                
+                <div className="rounded-lg border border-border bg-surface-2/60 p-4 min-h-24">
+                  {loadingAi ? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-4 text-muted-foreground">
+                      <Loader2 className="size-5 animate-spin text-primary" />
+                      <p className="text-xs">Analyzing journals and adherence...</p>
+                    </div>
+                  ) : hasGenerated ? (
+                    <FormattedSynthesis text={summaryData.aiSummary} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-4 italic">
+                      {summaryData.aiSummary}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {!summaryData.hasWeighedInToday && (
-                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-400">
-                  <p className="font-semibold mb-1">Sunday weigh-in missing.</p>
-                  <p className="text-xs">You cannot lock the week without an end-of-week bodyweight log on the dashboard.</p>
+                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400">
+                  ⚠️ You must log today's bodyweight on the dashboard before locking in the week.
                 </div>
               )}
 
-              <Button
-                className="w-full font-bold h-12 text-md"
-                disabled={!summaryData.hasWeighedInToday || loadingAi}
+              <Button 
+                className="w-full font-bold mt-4" 
                 onClick={handleLockInWeek}
+                disabled={!summaryData.hasWeighedInToday}
               >
-                {summaryData.isFinalised ? "Refinalise Data & Overwrite" : "Finalise & Lock Data"}
+                {summaryData.isFinalised ? "Refinalise & Update Archive" : "Lock In Week & Archive"}
               </Button>
             </div>
           </DialogContent>

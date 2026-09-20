@@ -524,35 +524,39 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
                 </div>
               )}
 
-              <div className="space-y-2 pt-2">
+             <div className="rounded-lg border border-border bg-surface-2/60 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Coach Synthesis</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-[10px] gap-1"
+                  <p className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Sparkles className="size-4" />
+                    AI Weekly Journal Synthesis
+                  </p>
+                  {summaryData.aiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict." && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 text-xs text-muted-foreground hover:text-primary gap-1"
+                      onClick={generateAiSummary}
+                      disabled={loadingAi}
+                    >
+                      {loadingAi ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                      Regenerate
+                    </Button>
+                  )}
+                </div>
+
+                {summaryData.aiSummary === "Tap below to generate your AI weekly journal synthesis and performance verdict." ? (
+                  <Button
+                    variant="secondary"
+                    className="w-full gap-2 text-primary"
                     onClick={generateAiSummary}
                     disabled={loadingAi}
                   >
-                    {loadingAi ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
-                    {hasGenerated ? "Regenerate" : "Generate"}
+                    {loadingAi ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                    {loadingAi ? "Analyzing week..." : "Generate AI Verdict"}
                   </Button>
-                </div>
-                
-                <div className="rounded-lg border border-border bg-surface-2/60 p-4 min-h-24">
-                  {loadingAi ? (
-                    <div className="flex flex-col items-center justify-center gap-2 py-4 text-muted-foreground">
-                      <Loader2 className="size-5 animate-spin text-primary" />
-                      <p className="text-xs">Analyzing journals and adherence...</p>
-                    </div>
-                  ) : hasGenerated ? (
-                    <FormattedSynthesis text={summaryData.aiSummary} />
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-4 italic">
-                      {summaryData.aiSummary}
-                    </p>
-                  )}
-                </div>
+                ) : (
+                  <FormattedSynthesis text={summaryData.aiSummary} />
+                )}
               </div>
 
               {!summaryData.hasWeighedInToday && (

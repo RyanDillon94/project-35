@@ -526,11 +526,9 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
 
              <div className="rounded-lg border border-border bg-surface-2/60 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-primary flex items-center gap-2">
-                    <Sparkles className="size-4" />
-                    AI Weekly Journal Synthesis
-                  </p>
-                  {summaryData.aiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict." && (
+<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"><Sparkles className="size-4" />AI Weekly Journal Synthesis</p>
+              
+    {summaryData.aiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict." && (
                     <Button 
                       size="sm" 
                       variant="ghost" 

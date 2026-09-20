@@ -9,7 +9,7 @@ import {
   GOAL_WEIGHT 
 } from "@/lib/project35";
 import { triggerFridayBackup } from "@/lib/p35-cloud";
-import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, Check } from "lucide-react";
+import { CalendarCheck, Camera, Loader2, Sparkles, Trophy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getMondayKeyForDate } from "./WeeklyProtocolCard";
 
@@ -60,6 +60,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
   const [hasGenerated, setHasGenerated] = useState(false);
   const [summaryData, setSummaryData] = useState<{
     isSunday: boolean;
+    isMonday: boolean;
+    isOverdue: boolean;
+    evaluationDateStr: string;
     isPhotoWeek: boolean;
     totalPossible: number;
     totalCompleted: number;
@@ -70,20 +73,29 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     journals: string[];
     hevyWorkouts: string[];
     aiSummary: string;
-    hasWeighedInToday: boolean;
+    hasRequiredWeighIn: boolean;
     isFinalised: boolean;
   } | null>(null);
 
   const calculateWeekData = useCallback(() => {
     const todayStr = todayKey();
-    const today = new Date(todayStr + "T00:00:00Z");
-    const isSunday = today.getUTCDay() === 0;
+    const realTodayObj = new Date(todayStr + "T00:00:00Z");
+    const dayOfWeek = realTodayObj.getUTCDay();
+    const isSunday = dayOfWeek === 0;
+    const isMonday = dayOfWeek === 1;
 
-    const weekKey = `p35_finalised_week_${todayStr}`;
+    // Determine which week we are evaluating. If it's Monday, look at yesterday (Sunday).
+    let evaluationDateObj = realTodayObj;
+    if (isMonday) {
+      evaluationDateObj = new Date(realTodayObj.getTime() - 24 * 60 * 60 * 1000);
+    }
+    const evaluationDateStr = evaluationDateObj.toISOString().slice(0, 10);
+
+    const weekKey = `p35_finalised_week_${evaluationDateStr}`;
     const lastLocked = localStorage.getItem("p35_last_locked_week");
-    const isFinalised = localStorage.getItem(weekKey) !== null || lastLocked === todayStr;
+    const isFinalised = localStorage.getItem(weekKey) !== null || lastLocked === evaluationDateStr;
 
-    let hasWeighedInToday = false;
+    let hasWeighedIn = false;
     let weightHistory: { date: string; weight: number }[] = [];
     const validWeekDates = new Set<string>();
 
@@ -95,7 +107,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       if (rawWeights) {
         const parsedEntries = JSON.parse(rawWeights);
         if (Array.isArray(parsedEntries)) {
-          hasWeighedInToday = parsedEntries.some((e: any) => e.date === todayStr);
+          hasWeighedIn = parsedEntries.some((e: any) => e.date === evaluationDateStr);
           weightHistory = parsedEntries
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 5);
@@ -105,8 +117,10 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       console.error("Failed to check weigh-in history:", err);
     }
 
-    const activeDate = todayKey();
-    const mondayKey = getMondayKeyForDate(activeDate);
+    // Relax the weigh-in lock for Monday Overdue state so you don't get permanently stuck
+    const hasRequiredWeighIn = isMonday ? true : hasWeighedIn;
+
+    const mondayKey = getMondayKeyForDate(evaluationDateStr);
     const rawProtocol = localStorage.getItem(`p35_weekly_protocol_${mondayKey}`);
     const weeklyProtocolGoals = rawProtocol 
       ? JSON.parse(rawProtocol).map((g: any) => ({
@@ -116,11 +130,11 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       : [];
 
     const startDate = new Date("2026-09-07T00:00:00Z");
-    const diffTime = Math.abs(today.getTime() - startDate.getTime());
+    const diffTime = Math.abs(evaluationDateObj.getTime() - startDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const currentWeekNumber = Math.max(1, Math.ceil(diffDays / 7));
     
-    const isPhotoWeek = isSunday && currentWeekNumber % 4 === 0;
+    const isPhotoWeek = evaluationDateObj.getUTCDay() === 0 && currentWeekNumber % 4 === 0;
 
     const habitStats: Record<string, { label: string; completed: number; total: number; expectedTotal: number }> = {};
     let totalPossibleChecks = 0;
@@ -129,13 +143,13 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const hevyWorkouts: string[] = [];
 
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setUTCDate(today.getUTCDate() - i);
+      const d = new Date(evaluationDateObj);
+      d.setUTCDate(evaluationDateObj.getUTCDate() - i);
       const k = d.toISOString().slice(0, 10);
       validWeekDates.add(k);
       
-      const dayOfWeek = d.getUTCDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const loopDayOfWeek = d.getUTCDay();
+      const isWeekend = loopDayOfWeek === 0 || loopDayOfWeek === 6;
 
       const dayHabits = getActiveHabits(d);
       const rawHabits = localStorage.getItem(`p35_habits_${k}`);
@@ -179,7 +193,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
       }
     }
 
-    // Extract Hevy Workouts for the week
     try {
       const allHevyRaw = localStorage.getItem("p35_hevy_workouts") || localStorage.getItem("hevy_cache");
       if (allHevyRaw) {
@@ -220,7 +233,6 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
     const corePercentage = totalPossibleChecks > 0 ? (totalCompletedChecks / totalPossibleChecks) * 100 : 0;
 
     let protocolPercentage = 0;
-    
     if (weeklyProtocolGoals.length > 0) {
       let totalProtocolTicks = 0;
       let completedProtocolTicks = 0;
@@ -251,6 +263,9 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
 
       return {
         isSunday,
+        isMonday,
+        isOverdue: isMonday && !isFinalised,
+        evaluationDateStr,
         isPhotoWeek,
         totalPossible: totalPossibleChecks,
         totalCompleted: totalCompletedChecks,
@@ -261,7 +276,7 @@ export function FinaliseWeekBanner({ userId }: { userId: string | null }) {
         journals,
         hevyWorkouts,
         aiSummary: keepExisting ? currentAiSummary : "Tap below to generate your AI weekly journal synthesis and performance verdict.",
-        hasWeighedInToday,
+        hasRequiredWeighIn,
         isFinalised,
       };
     });
@@ -355,18 +370,18 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
   };
 
   const handleLockInWeek = async () => {
-    if (!summaryData || !summaryData.hasWeighedInToday) {
+    if (!summaryData || !summaryData.hasRequiredWeighIn) {
       return;
     }
 
-    const todayStr = todayKey();
-    const weekKey = `p35_finalised_week_${todayStr}`;
+    const lockDateStr = summaryData.evaluationDateStr;
+    const weekKey = `p35_finalised_week_${lockDateStr}`;
     const overallPct = summaryData.overallPercentage ?? 0;
     
     const { activePhase, activeBlock } = getActiveBlockDetails();
-    const mondayKey = getMondayKeyForDate(todayStr);
+    const mondayKey = getMondayKeyForDate(lockDateStr);
     const formatShortDate = (dStr: string) => new Date(dStr).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit" });
-    const dateRangeStr = `${formatShortDate(mondayKey)} - ${formatShortDate(todayStr)}`;
+    const dateRangeStr = `${formatShortDate(mondayKey)} - ${formatShortDate(lockDateStr)}`;
 
     const fullBackupData: Record<string, string> = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -377,7 +392,7 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
     }
 
     const weekArchiveRecord = {
-      date: todayStr,
+      date: lockDateStr,
       dateRange: dateRangeStr,
       phaseTitle: `Phase ${activePhase.id}: ${activePhase.title}`,
       blockName: activeBlock.name,
@@ -392,8 +407,8 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
 
     try {
       localStorage.setItem(weekKey, JSON.stringify(weekArchiveRecord));
-      localStorage.setItem("p35_last_locked_week", todayStr);
-      await triggerFridayBackup(todayStr);
+      localStorage.setItem("p35_last_locked_week", lockDateStr);
+      await triggerFridayBackup(lockDateStr);
     } catch (err) {
       console.error("Failed to save weekly archive or trigger backup", err);
     }
@@ -414,23 +429,27 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
     }
   };
 
-  if (!summaryData || !summaryData.isSunday) {
-    return null;
-  }
+  // Only render on Sundays OR if it's Monday and they haven't locked in yet.
+  if (!summaryData) return null;
+  if (!summaryData.isSunday && !summaryData.isOverdue) return null;
 
   return (
-    <div className={`panel p-4 space-y-3 ${summaryData.isFinalised ? "border-emerald-500/40 bg-emerald-500/10" : "border-primary/40 bg-primary/10"}`}>
+    <div className={`panel p-4 space-y-3 ${summaryData.isOverdue ? "border-amber-500/50 bg-amber-500/10" : summaryData.isFinalised ? "border-emerald-500/40 bg-emerald-500/10" : "border-primary/40 bg-primary/10"}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className={`grid size-9 shrink-0 place-items-center rounded-lg ${summaryData.isFinalised ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary"}`}>
-            {summaryData.isFinalised ? <Check className="size-5" /> : <CalendarCheck className="size-5" />}
+          <div className={`grid size-9 shrink-0 place-items-center rounded-lg ${summaryData.isOverdue ? "bg-amber-500/20 text-amber-500" : summaryData.isFinalised ? "bg-emerald-500/20 text-emerald-400" : "bg-primary/20 text-primary"}`}>
+            {summaryData.isOverdue ? <AlertCircle className="size-5" /> : summaryData.isFinalised ? <Check className="size-5" /> : <CalendarCheck className="size-5" />}
           </div>
           <div>
             <h3 className="text-sm font-bold text-foreground">
-              {summaryData.isFinalised ? "Sunday: Week Finalised & Locked" : "Sunday: Finalise Week"}
+              {summaryData.isOverdue ? "Overdue: Finalise Last Week" : summaryData.isFinalised ? "Sunday: Week Finalised & Locked" : "Sunday: Finalise Week"}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {summaryData.isFinalised ? "Weekly audit complete and backed up. Refinalise anytime if adjustments are needed." : "Review metrics, protocol targets, synthesize journals, and lock in."}
+              {summaryData.isOverdue 
+                ? "You missed Sunday's check-in. Review and lock in your week now." 
+                : summaryData.isFinalised 
+                  ? "Weekly audit complete and backed up. Refinalise anytime if adjustments are needed." 
+                  : "Review metrics, protocol targets, synthesize journals, and lock in."}
             </p>
           </div>
         </div>
@@ -442,9 +461,9 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
           }
         }}>
           <DialogTrigger asChild>
-            <Button size="sm" variant={summaryData.isFinalised ? "outline" : "default"} className="gap-1.5 shrink-0">
+            <Button size="sm" variant={summaryData.isOverdue ? "default" : summaryData.isFinalised ? "outline" : "default"} className={`gap-1.5 shrink-0 ${summaryData.isOverdue ? "bg-amber-500 text-black hover:bg-amber-400" : ""}`}>
               <Sparkles className="size-4" />
-              {summaryData.isFinalised ? "Refinalise" : "Finalise"}
+              {summaryData.isOverdue ? "Finalise" : summaryData.isFinalised ? "Refinalise" : "Finalise"}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
@@ -524,14 +543,15 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
                 </div>
               )}
 
-             <div className="rounded-lg border border-border bg-surface-2/60 p-4 space-y-3">
+              {/* Pulled AI Header Outside the Content Box */}
+              <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between">
-<p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-  <Sparkles className="size-4" />
-  AI Weekly Journal Synthesis
-</p>
-
-    {summaryData.aiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict." && (
+                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Sparkles className="size-4" />
+                    AI Weekly Journal Synthesis
+                  </p>
+                  
+                  {summaryData.aiSummary !== "Tap below to generate your AI weekly journal synthesis and performance verdict." && (
                     <Button 
                       size="sm" 
                       variant="ghost" 
@@ -545,22 +565,24 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
                   )}
                 </div>
 
-                {summaryData.aiSummary === "Tap below to generate your AI weekly journal synthesis and performance verdict." ? (
-                  <Button
-                    variant="secondary"
-                    className="w-full gap-2 text-primary"
-                    onClick={generateAiSummary}
-                    disabled={loadingAi}
-                  >
-                    {loadingAi ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                    {loadingAi ? "Analyzing week..." : "Generate AI Verdict"}
-                  </Button>
-                ) : (
-                  <FormattedSynthesis text={summaryData.aiSummary} />
-                )}
+                <div className="rounded-lg border border-border bg-surface-2/60 p-4 min-h-[100px]">
+                  {summaryData.aiSummary === "Tap below to generate your AI weekly journal synthesis and performance verdict." ? (
+                    <Button
+                      variant="secondary"
+                      className="w-full gap-2 text-primary"
+                      onClick={generateAiSummary}
+                      disabled={loadingAi}
+                    >
+                      {loadingAi ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                      {loadingAi ? "Analyzing week..." : "Generate AI Verdict"}
+                    </Button>
+                  ) : (
+                    <FormattedSynthesis text={summaryData.aiSummary} />
+                  )}
+                </div>
               </div>
 
-              {!summaryData.hasWeighedInToday && (
+              {!summaryData.hasRequiredWeighIn && !summaryData.isMonday && (
                 <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-400">
                   ⚠️ You must log today's bodyweight on the dashboard before locking in the week.
                 </div>
@@ -569,7 +591,7 @@ Do NOT output any empty bullet points. Do NOT alter the headers.`;
               <Button 
                 className="w-full font-bold mt-4" 
                 onClick={handleLockInWeek}
-                disabled={!summaryData.hasWeighedInToday}
+                disabled={!summaryData.hasRequiredWeighIn}
               >
                 {summaryData.isFinalised ? "Refinalise & Update Archive" : "Lock In Week & Archive"}
               </Button>

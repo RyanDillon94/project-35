@@ -12,13 +12,9 @@ import { DataBackupCard } from "@/components/p35/data-backup-card";
 import { DeloadCard } from "@/components/p35/deload-card";
 import { FinaliseWeekBanner } from "@/components/p35/finalise-week-banner";
 import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
-import { TestModePanel } from '../components/TestModePanel';
 import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
-import { StrengthCard } from "@/components/p35/StrengthCard";
-import { todayKey } from "@/lib/project35";
 import { MissionArchiveCard } from "@/components/p35/mission-archive-card";
-
-
+import { todayKey } from "@/lib/project35";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,6 +39,16 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  // Emergency flush: Wipe out any lingering mock dates from the hidden TestModePanel
+  if (typeof window !== "undefined") {
+    const hasMock = localStorage.getItem("p35_mock_date") || localStorage.getItem("p35_test_date");
+    if (hasMock) {
+      localStorage.removeItem("p35_mock_date");
+      localStorage.removeItem("p35_test_date");
+      window.location.reload();
+    }
+  }
+
   return <Dashboard userId="local-user" />;
 }
 
@@ -54,20 +60,19 @@ function Dashboard({ userId }: { userId: string }) {
   // Track the currently viewed date from local storage/navigator
   const [currentDate, setCurrentDate] = useState(() => localStorage.getItem("p35_active_date") || todayKey());
 
-  // 1. Wake-up Hook: Forces a hard refresh if the actual day changes while the app is in the background
+  // 1. Bulletproof Midnight Checker: Aggressively checks the clock to force a reload if the day changes
   useEffect(() => {
     const mountDate = todayKey();
-    const handleWakeUp = () => {
-      if (document.visibilityState === "visible") {
-        const realToday = todayKey();
-        if (realToday !== mountDate) {
-          localStorage.removeItem("p35_active_date");
-          window.location.reload();
-        }
+    
+    const checkMidnight = setInterval(() => {
+      const realToday = todayKey();
+      if (realToday !== mountDate) {
+        localStorage.removeItem("p35_active_date");
+        window.location.reload();
       }
-    };
-    document.addEventListener("visibilitychange", handleWakeUp);
-    return () => document.removeEventListener("visibilitychange", handleWakeUp);
+    }, 5000); // Checks the system clock every 5 seconds
+    
+    return () => clearInterval(checkMidnight);
   }, []);
 
   // 2. Existing Hook: State and event tracking for date/finalise changes
@@ -99,9 +104,6 @@ function Dashboard({ userId }: { userId: string }) {
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 pt-5 pb-28">
 
-      {/* Hide test panel 
-      <TestModePanel /> */}
-      
       {/* Top Banner (Only if NOT finalised) */}
       {!isFinalised && <FinaliseWeekBanner userId={userId} key={`top-${currentDate}`} />}
 
@@ -128,7 +130,7 @@ function Dashboard({ userId }: { userId: string }) {
       {/* Footer Management Section */}
       <div className="flex flex-col items-center gap-2 pt-4 border-t border-border/40">
         <WeeklyTrendsAnalytics/>
-  <MissionArchiveCard />
+        <MissionArchiveCard />
         <DeloadCard />
         <DataBackupCard />
       </div>

@@ -60,30 +60,47 @@ function Dashboard({ userId }: { userId: string }) {
   // Track the currently viewed date from local storage/navigator
   const [currentDate, setCurrentDate] = useState(() => localStorage.getItem("p35_active_date") || todayKey());
 
-  // 1. Boot Sequence & Midnight Rollover
+  // 1. Boot Sequence & Aggressive Thaw Checker
   useEffect(() => {
-    // Every time the app is freshly opened, snap directly to today's date.
-    // This stops the navigator from getting stuck on historical dates.
-    const initialToday = todayKey();
-    localStorage.setItem("p35_active_date", initialToday);
-    setCurrentDate(initialToday);
-    
-    // Broadcast the snap to all components (NonNegotiables, etc.)
+    // 1. On first mount, snap to today
+    const appBootDay = todayKey();
+    localStorage.setItem("p35_active_date", appBootDay);
+    setCurrentDate(appBootDay);
     window.dispatchEvent(new Event("p35-date-changed"));
 
-    // Watch the system clock for midnight rollovers if left open in the background
+    // 2. The "Thaw" Handler
+    // If you swipe the app closed, the phone often just freezes the webview.
+    // When you open it the next morning, it unfreezes. This instantly catches 
+    // the unfreeze event and forces a reload to today if a new day has started.
+    const handleWakeUp = () => {
+      if (document.visibilityState === "visible") {
+        if (todayKey() !== appBootDay) {
+          localStorage.setItem("p35_active_date", todayKey());
+          window.location.reload();
+        }
+      }
+    };
+
+    // Listen for the app coming back to the foreground
+    document.addEventListener("visibilitychange", handleWakeUp);
+    window.addEventListener("focus", handleWakeUp);
+
+    // 3. Fallback interval for midnight rollovers if the screen is actively on
     const checkMidnight = setInterval(() => {
-      const currentSystemDate = todayKey();
-      if (currentSystemDate !== initialToday) {
-        localStorage.setItem("p35_active_date", currentSystemDate);
-        window.location.reload(); 
+      if (todayKey() !== appBootDay) {
+        localStorage.setItem("p35_active_date", todayKey());
+        window.location.reload();
       }
     }, 5000);
 
-    return () => clearInterval(checkMidnight);
+    return () => {
+      document.removeEventListener("visibilitychange", handleWakeUp);
+      window.removeEventListener("focus", handleWakeUp);
+      clearInterval(checkMidnight);
+    };
   }, []);
 
-  // 2. Syncing state when you actively click the arrows in the navigator
+  // 2. Existing Hook: State and event tracking for date/finalise changes
   useEffect(() => {
     const updateDateAndStatus = () => {
       const active = localStorage.getItem("p35_active_date") || todayKey();
@@ -99,7 +116,6 @@ function Dashboard({ userId }: { userId: string }) {
     window.addEventListener("storage", updateDateAndStatus);
     window.addEventListener("p35-date-changed", updateDateAndStatus as EventListener);
     
-    // Fast polling to keep the UI perfectly synced with the date navigator
     const interval = setInterval(updateDateAndStatus, 300);
 
     return () => {

@@ -15,6 +15,8 @@ import { useUserSettings, useWeighIns } from "@/lib/p35-cloud";
 import { WeeklyTrendsAnalytics } from "@/components/p35/weekly-trends-analytics";
 import { MissionArchiveCard } from "@/components/p35/mission-archive-card";
 import { todayKey } from "@/lib/project35";
+import { TestModePanel } from '../components/TestModePanel';
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -164,6 +166,8 @@ function Dashboard({ userId }: { userId: string }) {
       {isFinalised && <FinaliseWeekBanner userId={userId} key={`bot-${currentDate}`} />}
 
       <CoachDrawer workout={workout} entries={entries} userId={userId} />
+      
+      <TestModePanel />
     </main>
   );
 }

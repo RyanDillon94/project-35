@@ -41,16 +41,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  // Emergency flush: Wipe out any lingering mock dates from the hidden TestModePanel
-  if (typeof window !== "undefined") {
-    const hasMock = localStorage.getItem("p35_mock_date") || localStorage.getItem("p35_test_date");
-    if (hasMock) {
-      localStorage.removeItem("p35_mock_date");
-      localStorage.removeItem("p35_test_date");
-      window.location.reload();
-    }
-  }
-
   return <Dashboard userId="local-user" />;
 }
 

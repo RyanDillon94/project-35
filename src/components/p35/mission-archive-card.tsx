@@ -198,34 +198,32 @@ export function MissionArchiveCard() {
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
-      <SheetTrigger asChild>
+            <SheetTrigger asChild>
         <div className="panel flex items-center justify-between p-4 cursor-pointer hover:border-primary/50 transition-colors w-full gap-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <Archive className="size-5 shrink-0 text-primary" />
-
             <div className="min-w-0 w-full text-left">
               <p className="text-sm font-bold truncate text-foreground">
                 Mission Archive
               </p>
-
               <p className="text-xs text-muted-foreground truncate w-full">
                 Historical weekly reviews & protocols
               </p>
             </div>
           </div>
 
-          <div className="flex items-center shrink-0">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="pointer-events-none gap-1.5 h-8 text-xs"
-            >
-              <Archive className="size-3.5" />
-              View
-            </Button>
-          </div>
+          {/* Matched to DeloadCard structure with min-width to equal "Enable" */}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="pointer-events-none gap-1.5 h-8 text-xs shrink-0 min-w-[84px] justify-center"
+          >
+            <Archive className="size-3.5" />
+            <span>View</span>
+          </Button>
         </div>
       </SheetTrigger>
+
 
       <SheetContent
         side="bottom"

@@ -31,6 +31,36 @@ type ArchivedWeek = {
   aiSynthesis: string;
 };
 
+function FormattedSynthesis({ text }: { text: string }) {
+  return (
+    <div className="space-y-2 text-xs text-muted-foreground leading-relaxed not-italic">
+      {text.split("\n").map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+
+        // Catches **The Numbers** and turns them into green bold text
+        if (trimmed.startsWith("**") && trimmed.endsWith("**") && !trimmed.slice(2, -2).includes("**")) {
+          return (
+            <p key={i} className="font-bold text-primary pt-3 first:pt-0 text-sm">
+              {trimmed.slice(2, -2)}
+            </p>
+          );
+        }
+
+        const formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, "$1");
+        const isBullet = formattedLine.startsWith("*") || formattedLine.startsWith("-");
+        const cleanText = isBullet ? formattedLine.replace(/^[*-\s]+/, "• ") : formattedLine;
+
+        return (
+          <p key={i} className={isBullet ? "pl-2 font-medium text-foreground/90" : ""}>
+            {cleanText}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function MissionArchiveCard() {
   const [isOpen, setIsOpen] = useState(false);
   const [archives, setArchives] = useState<ArchivedWeek[]>([]);
@@ -212,7 +242,6 @@ export function MissionArchiveCard() {
             </div>
           </div>
 
-          {/* Matched to DeloadCard structure with min-width to equal "Enable" */}
           <Button
             variant="secondary"
             size="sm"
@@ -223,7 +252,6 @@ export function MissionArchiveCard() {
           </Button>
         </div>
       </SheetTrigger>
-
 
       <SheetContent
         side="bottom"
@@ -528,8 +556,8 @@ export function MissionArchiveCard() {
                           </button>
 
                           {isAIExpanded && (
-                            <div className="mt-2 text-xs italic text-muted-foreground bg-surface-2/60 p-3 rounded-lg border border-border/50 leading-relaxed whitespace-pre-wrap">
-                              {archive.aiSynthesis}
+                            <div className="mt-2 bg-surface-2/60 p-3 rounded-lg border border-border/50">
+                              <FormattedSynthesis text={archive.aiSynthesis} />
                             </div>
                           )}
                         </div>

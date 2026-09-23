@@ -70,8 +70,10 @@ function formatWeight(weight: number | null | undefined, exerciseTitle: string) 
   if (weight == null) return "BW";
 
   const titleLower = exerciseTitle.toLowerCase();
+  
+  // Exclude "lat pulldown" from being caught by the "cable" keyword
   const isCableOrLbs =
-    titleLower.includes("cable") ||
+    (titleLower.includes("cable") && !titleLower.includes("lat pulldown")) ||
     titleLower.includes("pushdown") ||
     titleLower.includes("fly");
 
@@ -84,6 +86,7 @@ function formatWeight(weight: number | null | undefined, exerciseTitle: string) 
   const roundedKg = Number.isInteger(weight) ? weight : Math.round(weight * 10) / 10;
   return `${roundedKg}kg`;
 }
+
 
 export function HevyCard({
   workout: initialWorkout,

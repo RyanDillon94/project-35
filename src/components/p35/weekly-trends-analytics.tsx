@@ -301,7 +301,11 @@ export function WeeklyTrendsAnalytics() {
                                 <div className="flex items-center gap-3">
                                   <span className="text-muted-foreground">{ex.currentE1RM > 0 ? `${ex.currentE1RM}kg e1RM` : "—"}</span>
                                   <span className={ex.percentChange >= 0 ? "text-emerald-500 font-semibold" : "text-rose-500 font-semibold"}>
-                                    {ex.percentChange > 0 ? `+${ex.percentChange}%` : `${ex.percentChange}%`}
+                                    {ex.baselineE1RM === 0 
+                                      ? "NEW" 
+                                      : ex.percentChange > 0 
+                                        ? `+${ex.percentChange}%` 
+                                        : `${ex.percentChange}%`}
                                   </span>
                                 </div>
                               </div>

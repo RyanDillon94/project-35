@@ -16,10 +16,15 @@ function shiftIsoDate(isoDate: string, daysDelta: number): string {
 export function NonNegotiables({ userId, onDateChange }: { userId: string | null; onDateChange?: (date: string) => void }) {
   const actualToday = todayKey();
   
-  // Initialize from shared active storage or live today
+  // Initialize from shared active storage or live today, ensuring we don't boot into a past day
   const [selectedDay, setSelectedDay] = useState(() => {
     try {
-      return localStorage.getItem("p35_active_date") || actualToday;
+      const saved = localStorage.getItem("p35_active_date");
+      // If the saved date is older than today, default to today for a fresh session
+      if (saved && saved < actualToday) {
+        return actualToday;
+      }
+      return saved || actualToday;
     } catch {
       return actualToday;
     }
@@ -237,7 +242,8 @@ export function NonNegotiables({ userId, onDateChange }: { userId: string | null
       </div>
 
       {/* Habits Checklist for Selected Date */}
-      <div className="space-y-2 pt-0.5">
+      {/* ADDED key={selectedDay} to force UI remount on date change */}
+      <div className="space-y-2 pt-0.5" key={selectedDay}>
         <p className="stat-label">Habit Check</p>
         {activeHabits.map((habit) => {
           const isChecked = Boolean(habits[habit.key]);

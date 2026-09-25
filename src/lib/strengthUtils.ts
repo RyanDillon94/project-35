@@ -10,7 +10,9 @@ export type WorkoutSet = {
 export type TopExercise = {
   exerciseName: string;
   currentE1RM: number;
+  baselineE1RM: number;
   percentChange: number;
+  currentVolume: number;
 };
 
 export type MuscleGroupSummary = {
@@ -63,7 +65,8 @@ export function calculateTrainingProgress(sets: WorkoutSet[]): ProgressReport {
     baseVol: number; 
     recentVol: number; 
     baseSets: number; 
-    recentSets: number 
+    recentSets: number;
+    recentDates: Set<string>; 
   }> = new Map();
 
   validSets.forEach(s => {
@@ -83,6 +86,7 @@ export function calculateTrainingProgress(sets: WorkoutSet[]): ProgressReport {
         recentVol: 0,
         baseSets: 0,
         recentSets: 0,
+        recentDates: new Set(),
       });
     }
 
@@ -92,6 +96,7 @@ export function calculateTrainingProgress(sets: WorkoutSet[]): ProgressReport {
       // It falls in the most recent 28 days
       entry.recentVol += vol;
       entry.recentSets += 1;
+      entry.recentDates.add(s.date);
       if (e1rm > entry.recentE1rm) entry.recentE1rm = e1rm;
     } else {
       // It falls in the previous 28 days (baseline)
@@ -133,12 +138,14 @@ export function calculateTrainingProgress(sets: WorkoutSet[]): ProgressReport {
       exChange = 100;
     }
 
-    // Push to exercise list if it has current volume
-    if (data.recentVol > 0) {
+    // Push to exercise list ONLY if it has current volume AND was performed on at least 2 separate days
+    if (data.recentVol > 0 && data.recentDates.size >= 2) {
       muscleStrengthChanges[data.muscle].exercises.push({
         exerciseName,
         currentE1RM: data.recentE1rm,
-        percentChange: Math.round(exChange * 10) / 10
+        baselineE1RM: data.baseE1rm,
+        percentChange: Math.round(exChange * 10) / 10,
+        currentVolume: data.recentVol
       });
     }
   });
@@ -166,9 +173,9 @@ export function calculateTrainingProgress(sets: WorkoutSet[]): ProgressReport {
     const vCurrent = muscleVolumeCurrent[group];
     const volumeChange = calcChange(vCurrent, vBase);
 
-    // Sort top exercises by the highest E1RM percent change, then slice to top 3
+    // Sort top exercises by VOLUME instead of percent change, then slice to top 3
     const topExercises = mData.exercises
-      .sort((a, b) => b.percentChange - a.percentChange)
+      .sort((a, b) => b.currentVolume - a.currentVolume)
       .slice(0, 3);
 
     muscleGroupSummaries[group] = {

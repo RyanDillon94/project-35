@@ -208,7 +208,7 @@ export function WeightCard({
                 axisLine={false}
               />
               <YAxis
-                domain={[GOAL_WEIGHT - 6, "data max + 5"]}
+                domain={[GOAL_WEIGHT - 6, "dataMax + 5"]}
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}

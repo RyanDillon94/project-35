@@ -788,9 +788,10 @@ function CoachText({
                       "• ",
                     );
 
+                  // PATCHED REGEX: Safely strips spaces, dashes, and single asterisks, but ignores double asterisks
                   const cleanSub =
                     sub.replace(
-                      /^[*•–-\s]+/,
+                      /^(?:[•–-\s]+|\*(?!\*)\s*)+/,
                       "",
                     );
 

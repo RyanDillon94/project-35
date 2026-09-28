@@ -183,11 +183,81 @@ function buildContext(workout: HevyWorkout | null, entries: WeightEntry[]) {
   return lines.join("\n");
 }
 
-const FALLBACK_MODELS = [
+// ============================================================
+// DYNAMIC MODEL DISCOVERY LOGIC
+// ============================================================
+
+const PREFERRED_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
   "gemini-3.6-flash",
+  "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
-  "gemini-2-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
+
+async function getAvailableModels(apiKey: string): Promise<string[]> {
+  const availableModels: {
+    baseModelId?: string;
+    name?: string;
+    supportedGenerationMethods?: string[];
+  }[] = [];
+
+  let pageToken = "";
+
+  do {
+    const query = new URLSearchParams({
+      key: apiKey,
+      pageSize: "1000",
+    });
+
+    if (pageToken) {
+      query.set("pageToken", pageToken);
+    }
+
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?${query.toString()}`;
+    const listRes = await fetch(listUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const listData = await listRes.json().catch(() => ({}));
+
+    if (!listRes.ok) {
+      throw new Error(
+        listData.error?.message || `Unable to list Gemini models (HTTP ${listRes.status}).`
+      );
+    }
+
+    if (Array.isArray(listData.models)) {
+      availableModels.push(...listData.models);
+    }
+
+    pageToken = listData.nextPageToken || "";
+  } while (pageToken);
+
+  const modelIds = availableModels
+    .filter((model) => Array.isArray(model.supportedGenerationMethods))
+    .filter((model) => model.supportedGenerationMethods!.includes("generateContent"))
+    .map((model) => {
+      if (model.baseModelId) return model.baseModelId;
+      if (model.name) return model.name.replace(/^models\//, "");
+      return "";
+    })
+    .filter(Boolean);
+
+  return Array.from(new Set(modelIds));
+}
+
+function rankModels(availableModels: string[]): string[] {
+  const preferred = PREFERRED_MODELS.filter((model) => availableModels.includes(model));
+  const otherModels = availableModels.filter((model) => !PREFERRED_MODELS.includes(model));
+  return [...preferred, ...otherModels];
+}
 
 async function callGemini(
   apiKey: string,
@@ -216,9 +286,16 @@ async function callGemini(
     contents,
   };
 
+  const availableModels = await getAvailableModels(apiKey);
+  
+  if (availableModels.length === 0) {
+    throw new Error("This Gemini API key has no available models that support generateContent.");
+  }
+
+  const rankedModels = rankModels(availableModels);
   let lastErrorMsg = "Gemini request failed.";
 
-  for (const model of FALLBACK_MODELS) {
+  for (const model of rankedModels) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
